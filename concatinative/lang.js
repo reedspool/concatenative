@@ -95,9 +95,18 @@ function parsePath(path, execDirection) {
 	return _.map(tokenData, createToken);
 }
 
-// Thinkin I'll take this outside this file
+function basicToken(word) {
+	return createToken({ word: word });
+}
+
 function createToken(data) {
-	data.operator = 'value';
+	var basic = {
+		operator: 'value',
+		seperator: '/',
+		word: 'unset'
+	};
+
+	data = _.extend(basic, data);
 
 	switch (data.word) {
 		case '+':
@@ -154,20 +163,20 @@ function execute(tokens) {
 		},
 		ops = {
 			'+': function () {
-				return popNumberOrString() + 
-					popNumberOrString();
+				return basicToken(popNumberOrString() + 
+					popNumberOrString());
 			},
 			'-': function () {
-				return popNumber() - popNumber();
+				return basicToken(popNumber() - popNumber());
 			},
 			'*': function () {
-				return popNumber() * popNumber();
+				return basicToken(popNumber() * popNumber());
 			},
 			'/': function () {
-				return popNumber() / popNumber();
+				return basicToken(popNumber() / popNumber());
 			},
 			'%': function () {
-				return popNumber() % popNumber();
+				return basicToken(popNumber() % popNumber());
 			},
 			value: function () {
 				// TODO: What if we let files pass through?
@@ -181,7 +190,13 @@ function execute(tokens) {
 				return this;
 			},
 			gif: function () {
-				var gifHolder = { gif: 'loading.gif' };
+				var word = pop().word;
+				
+				var gifHolder = createToken({ 
+					word: word,
+					gif: 'loading.gif'
+				});
+				
 				var srcSetter = function (src) {
 					gifHolder.gif = src;
 				};

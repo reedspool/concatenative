@@ -17,8 +17,8 @@ exports.exec = function(req, res) {
 
 	log('Exec result: ', result); 
 	res.render('index', { 
-		title: 'Express', 
-		result: result 
+		title: 'Concatinative URL Language', 
+		result: JSON.stringify(result) 
 	});
 };
 
