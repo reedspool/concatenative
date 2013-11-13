@@ -9,16 +9,24 @@ var _ = require('underscore');
 
 exports.exec = function(req, res) {
 	log('Req url:', req.url);
-	var input = req.url.match(/exec(.*)/)[1];
+	var path = req.url.match(/exec(.*)/);
 
+	if ( ! path ) {
+		res.render('concatinative', {
+			title: 'Error: Exec hit with no path'
+		});
+		return;
+	}
 
-	var result = concat.resolve(input, 'rtl');
+	var input = decodeURIComponent(path[1]);
 
+	var result = concat.resolve(input, 'ltr');
 
 	log('Exec result: ', result); 
-	res.render('index', { 
+	res.render('concatinative', { 
 		title: 'Concatinative URL Language', 
-		result: JSON.stringify(result) 
+		result: JSON.stringify(result),
+		input: input
 	});
 };
 

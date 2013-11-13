@@ -32,6 +32,7 @@ module.exports = {
 	resolve: function (urlPath, execDirection) {
 		execDirection = execDirection || DEFAULT_EXEC_DIRECTION;
 
+		// TODO: Q-ify this whole thing!
 		var tokens = parsePath(urlPath, execDirection),
 			result = execute(tokens);
 		
@@ -143,6 +144,7 @@ function execute(tokens) {
 	var stack = [],
 		push = stack.push.bind(stack), 
 		pop = function () {
+			log('Pop');
 			if (_.isEmpty(stack)) log('POPPING EMPTY STACK')
 			return stack.pop();
 		},
@@ -201,7 +203,7 @@ function execute(tokens) {
 					gifHolder.gif = src;
 				};
 
-				Giphy.translate(pop().word)
+				Giphy.translate(word)
 					.then(function (gif) {
 						return gif.src;
 					})
