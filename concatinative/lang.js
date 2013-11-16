@@ -13,12 +13,13 @@
 var _ = require('underscore');
 var sys = require('sys');
 var Giphy = require('./giphy.js');
+var Q = require('q');
+var expect = require('expect.js');
 
-function log() {
-	_.each(arguments, function (arg) {
-		console.log(sys.inspect(arg));
-	});
-}
+var TokenFactory = require('./tokens.js');
+var Parser = require('./parser.js');
+var Utility = require('./lang-utility.js');
+var log = Utility.log;
 
 var DEFAULT_EXEC_DIRECTION = 'ltr';
 
@@ -29,107 +30,44 @@ var DEFAULT_EXEC_DIRECTION = 'ltr';
 // /forward_slash/changes%20to/right/slash/wefawe$@@!@/w23@!/2/43/@/$//5E/&*()-+%20%5E;a.a,a/\'%22double/quote%7Cpipe~%60backtick
 
 module.exports = {
-	resolve: function (urlPath, execDirection) {
-		execDirection = execDirection || DEFAULT_EXEC_DIRECTION;
+	resolve: resolve,
+	executeFromUrlPath: function (path) {
+		path = path.match(/^[\/]{0,1}(exec|json)\/(.*)/);
 
-		// TODO: Q-ify this whole thing!
-		var tokens = parsePath(urlPath, execDirection),
-			result = execute(tokens);
-		
-		return result;
+		if ( ! path ) throw new Error('Exec hit with no path')
+
+		var input = decodeURIComponent(path[2]);
+
+		return resolve(input, 'ltr')
+			.then(function (result) {
+				log('Exec result: ', result.output);
+				result.input = input;
+				return result;
+			});
 	},
-	test: function (urlPath) {
-		var tokens = parsePath(urlPath);
-
-		log(tokens);
-	}
+	makeExecutableUrl: makeExecutableUrl,
+	execute: execute
 };
 
-// Make tokens out of path
-function parsePath(path, execDirection) {
-	// The path is a string of words
-	// 
-	// Joined by*:   a space or slash
-	// 
-	// 		* words cannot contain these
-	// 			characters either
-
-	// TODO: Make a better "all" match. That is,
-	// 		one that matches a string with word first
-	var matchSeparator =             
-			 /[ \/]/,
-		matchWord = 
-					/[^ \/]*/,
-		matchWordOrSeparator = 
-			/([ \/])|([^ \/]*)/,
-		matchAllWordsAndSeperatorsExceptInitialWord = 
-			/([ \/])|([^ \/]*)*/g
-
-	var words = path.match(matchAllWordsAndSeperatorsExceptInitialWord);
-	var tokenData = [];
-
-	// That was easy
-	if (_.isEmpty(words)) return [];
-
-	// Make sure a "nothing" seperator begins it
-	var firstWord = path.match(matchWord);
-	if (firstWord == words[0]) words.unshift('/')
-
-	if (execDirection != DEFAULT_EXEC_DIRECTION) {
-		words = words.reverse();
-	}
-
-	// Bind the separator to whatever's on its right
-	for (var i = 0; i < words.length; i += 2) {
-
-		var datum = {
-			seperator: words[i],
-			word: words[i + 1]
-		};
-
-		if (typeof datum.word !== 'undefined') {
-			tokenData.push(datum);
-		}
-	}
-
-	// Then give'm a buncha proper tokens!
-	return _.map(tokenData, createToken);
+function makeExecutableUrl(req, path) {
+	path = path || req.url;
+	return req.protocol + "://" + req.get('host') + path;
 }
 
-function basicToken(word) {
-	return createToken({ word: word });
+function resolve(urlPath, execDirection) {
+	execDirection = execDirection || DEFAULT_EXEC_DIRECTION;
+
+	return Parser.parse(urlPath, execDirection)
+		.then(execute);
 }
 
-function createToken(data) {
-	var basic = {
-		operator: 'value',
-		seperator: '/',
-		word: 'unset'
-	};
-
-	data = _.extend(basic, data);
-
-	switch (data.word) {
-		case '+':
-		case '-':
-		case '*':
-		case '/':
-		case '%':
-			data.operator = data.word;
-			break;
-		case ':gif':
-			data.operator = 'gif';
-			break;
-	}
-
-	return data;
-}
-
-// Run through the tokens left to right
+// Execute our program!
+// Note: Execution is always LTR,
+// 		but notice parse handles execution dir.
 function execute(tokens) {
-
+	var inputTokens = _.clone(tokens)
+	
 	function number(token) {
-		// TODO: More strenuous testing
 		return parseFloat(token.word);
 	}
 
@@ -138,24 +76,40 @@ function execute(tokens) {
 		
 		if (num) return num;
 
-		return token.word.toString();
+		return token.toString();
+	}
+
+	function quotation(token) {
+		// Probably a duck
+		return token._isQuotation ? token : undefined;
+	}
+
+	function boole(token) {
+		console.log(token.booleanValue())
+		return token.booleanValue();
 	}
 
 	var stack = [],
 		push = stack.push.bind(stack), 
-		pop = function () {
+		pop = function (valueFunction) {
 			log('Pop');
-			if (_.isEmpty(stack)) log('POPPING EMPTY STACK')
-			return stack.pop();
-		},
-		popNumber = function () {
-			return number(pop());
-		},
-		popNumberOrString = function () {
-			return numberOrString(pop());
+			valueFunction = valueFunction || 
+				function (t) { return t; };
+
+			if (_.isEmpty(stack) || ! _.last(stack)) {
+				throw new Error('Popping Empty Stack!');
+			}
+			
+			var val = valueFunction(stack.pop());
+
+			if (typeof val === 'undefined') {
+				throw new Error('Value on stack incorrect type');
+			}
+
+			return val;
 		},
 		next = function () {
-			log('About to next\n')
+			log('About to next');
 			log('Tokens: ', tokens);
 			log('Stack: ', stack);
 
@@ -163,22 +117,87 @@ function execute(tokens) {
 			// .shift() ==> left to right
 			return tokens.shift();
 		},
+		rewind = function (input) {
+			log('About to rewind');
+			log('Tokens: ', tokens);
+			log('Stack: ', stack);
+
+			return tokens.unshift(input);
+		},
+		math = {
+			two_nums: function (op) {
+				log('Binary func: ', op);
+				var result = 
+					op(pop(number), pop(number));
+				push(TokenFactory.basic(result));
+			},
+			two_nums_or_strings: function (op) {
+				log('Binary func: ', op);
+				var result = op(pop(numberOrString) , pop(numberOrString));
+				push(TokenFactory.basic(result));
+			}
+		},
+		binary = Utility.binary,
+		unary = Utility.unary,
 		ops = {
 			'+': function () {
-				return basicToken(popNumberOrString() + 
-					popNumberOrString());
+				return math.two_nums_or_strings(binary.sum);
 			},
 			'-': function () {
-				return basicToken(popNumber() - popNumber());
+				return math.two_nums(binary.difference);
 			},
 			'*': function () {
-				return basicToken(popNumber() * popNumber());
+				return math.two_nums(binary.product);
 			},
 			'/': function () {
-				return basicToken(popNumber() / popNumber());
+				return math.two_nums(binary.quotient);
 			},
 			'%': function () {
-				return basicToken(popNumber() % popNumber());
+				return math.two_nums(binary.remainder);
+			},
+			'[': function () {
+				var quotation = TokenFactory.quotation(this);
+				
+				for (var n = next(); n.word !== ']';
+						n = next()) {
+					quotation.words.push(n);
+				}
+
+				push(quotation);
+			},
+			']': function () {
+				// Should have been consumed by ops['[']
+				throw new Error('Unmatched End Quote ]')
+			},
+			':apply': function () {
+				var quotation = pop(quotation);
+
+				if ( ! quotation) throw new Error('Apply called without quotation on top of stack');
+
+				var words = quotation.words;
+				log('Quotation words: ', words);
+				function nextWord() {
+					log('About to next from Quotation words: ', words);
+					return words.pop();
+				}
+
+				// Shove the quotation tokens
+				// back down the muzzle
+				for (var token = nextWord(); token;
+						token = nextWord()) {
+					rewind(token);
+				}
+
+				// Note: No Push!!
+			},
+			':if': function () {
+				var test = pop(boole);
+				var caseTrue = pop(quotation);
+				var caseFalse = pop(quotation);
+
+				push( test ? caseTrue : caseFalse );
+
+				ops[':apply']();
 			},
 			value: function () {
 				// TODO: What if we let files pass through?
@@ -189,40 +208,46 @@ function execute(tokens) {
 				//  return; // ... something better
 				// }
 
-				return this;
+				push(this);
 			},
-			gif: function () {
+			':gif': function () {
 				var word = pop().word;
 				
-				var gifHolder = createToken({ 
+				var gifHolder = TokenFactory.create({ 
 					word: word,
 					gif: 'loading.gif'
 				});
 				
-				var srcSetter = function (src) {
+				var srcSet = function (src) {
 					gifHolder.gif = src;
 				};
 
-				Giphy.translate(word)
-					.then(function (gif) {
-						return gif.src;
-					})
-					.done(srcSetter, function (error) {
-						srcSetter('noResults.gif');
-					});
+				var srcGet = function (gif) {
+					return gif.src;
+				}
 
-				return gifHolder;
+				Giphy.translate(word)
+					.then(srcGet)
+					.done(srcSet, 
+						srcSet.bind(null, 'noResults.gif'));
+
+				push(gifHolder);
 			}
 		};
 
 	// Main Loop! - Consume all the tokens
 	for (var token = next(); token; token = next()) {
 		var op = ops[token.operator];
-		push(op.apply(token));
+		op.apply(token);
 	}
 
 	log('Tokens: ', tokens);
 	log('Stack: ', stack);
-	return stack;
-}
 
+	return Q.resolve({
+		afterParsing: tokens.toString(),
+		inputTokens: inputTokens,
+		output: stack.toString(),
+		outputTokens: stack
+	});
+}

@@ -1,12 +1,72 @@
 extends layout
 
+mixin tokens(ts)
+  +codeBlock('Tokens')
+    span [
+    div.inset
+      - each t in ts
+        +token(t)
+    span ]
+
+mixin codeBlock(title)
+  div.inset.codeBlock
+    span.title= title
+    div.inset
+      code
+        block
+
+
+mixin token(t)
+  +codeBlock('Token')
+    span {
+      div.inset
+        div word: #{t.word}
+        div seperator: #{t.seperator}
+        div operator: #{t.operator}
+        if t.words
+          div words:
+            +tokens(t.words)
+    span }
+ 
+mixin repeatLink()
+  a(href='#{ repeatUrl }') #{ repeatUrl }
+
 block content
   h1= title
-  p Welcome to #{title}
 
-  p 
-    h6 Input: 
-    div.input #{input}
-  p
-    h6 Result: 
-    div.result #{result}
+  if input
+    +codeBlock('Input:')
+      div= input
+
+    +codeBlock('Output.toString():')
+      div= output
+    p You just executed a program! Check out what happened below!
+    p 
+      span p.s. you can do it again any time with this link: 
+      +repeatLink()
+
+
+  div
+    p Try it out by typing a program here:
+    input(type='text').inputText
+
+    p Then use the following link to execute it!
+    div.inputUrl
+
+
+  if input
+    h2 Dry look
+
+    +codeBlock('Input:')
+      div= input
+
+    +codeBlock('Output.toString():')
+      div= output
+
+    h2 Wet look
+
+    +codeBlock('Input:')
+      +tokens(inputTokens)
+
+    +codeBlock('Output:')
+      +tokens(outputTokens)

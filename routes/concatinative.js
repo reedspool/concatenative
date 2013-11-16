@@ -6,29 +6,35 @@
 var concat = require('../concatinative/lang.js');
 var sys = require('sys');
 var _ = require('underscore');
+var Q = require('q');
 
-exports.exec = function(req, res) {
-	log('Req url:', req.url);
-	var path = req.url.match(/exec(.*)/);
-
-	if ( ! path ) {
-		res.render('concatinative', {
-			title: 'Error: Exec hit with no path'
+exports.exec = function (req, res) {
+	execute(req)
+		.done(function (data) {
+			res.render('concatinative', data);
 		});
-		return;
-	}
-
-	var input = decodeURIComponent(path[1]);
-
-	var result = concat.resolve(input, 'ltr');
-
-	log('Exec result: ', result); 
-	res.render('concatinative', { 
-		title: 'Concatinative URL Language', 
-		result: JSON.stringify(result),
-		input: input
-	});
 };
+
+exports.json = function(req, res) {
+	execute(req)
+		.done(function (data) {
+			res.writeHead(200, {"Content-Type": "application/json"});
+			res.write(JSON.stringify(data));
+			res.end();
+		});
+}
+
+function execute (req) {
+	log('Req url:', req.url);
+
+	return concat.executeFromUrlPath(req.url)
+		.then(function (data) {
+			return _.extend(data, {
+				title: 'Concatenative URL Language',
+				repeatUrl: concat.makeExecutableUrl(req)
+			});
+		});
+}
 
 function log() {
 	_.each(arguments, function (arg) {

@@ -10,6 +10,7 @@
     "jade": "*",
     "stylus": "*",
     "underscore": "*",
-    "q": "*"
+    "q": "*",
+    "expect.js": "*"
   }
 }

@@ -32,6 +32,7 @@ if ('development' == app.get('env')) {
 }
 
 app.get('/exec/*', concatinative.exec);
+app.get('/json/*', concatinative.json);
 app.get('/', routes.index);
 app.get('/users', user.list);
 
