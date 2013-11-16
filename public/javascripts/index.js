@@ -1,36 +1,46 @@
 $(function () {
 	setupInput();
+	updateInputUrl('');
 })
+
+function getInput() {
+	return $('.inputText').val();
+}
 
 function setupInput() {
 	$('.inputText').focus().on('keyup', function (e) {
-		console.log(e.which)
+		console.log(e.which);
 
-
-		var input = $(this).val();
-		$('.inputUrl').html(makeExecuteableLink(input));
+		updateInputUrl();
 
 		if (e.which == 13) {
-			submit(input);	
+			submit();	
 		}
 	});	
 }
 
+function updateInputUrl() {
+	$('.inputUrl').html(makeExecuteableLink(getInput()));
+}
+
 function makeExecuteableLink(input) {
+	console.log(input)
 	var data = {
-		url: makeExecuteableUrl(input)
+		url: makeExecuteableUrl(input, true),
+		urlUnencoded: makeExecuteableUrl(input, false)
 	};
 
-	var link = '<a href="<%= url %>"><%= url %></a>'
+	var link = '<a href="<%= url %>"><%= urlUnencoded %></a>'
 	var maker = _.template(link);
 
 	return $(maker(data))
 }
 
-function makeExecuteableUrl(input) {
-	return '/exec/' + encodeURIComponent(input);
+function makeExecuteableUrl(input, encode) {
+	if (encode) input = encodeURIComponent(input);
+	return '/exec/' + input;
 }
 
-function submit(input) {
-	location.href = makeExecuteableUrl(input)
+function submit() {
+	location.href = makeExecuteableUrl(getInput())
 }

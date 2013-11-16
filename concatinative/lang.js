@@ -43,6 +43,10 @@ module.exports = {
 				log('Exec result: ', result.output);
 				result.input = input;
 				return result;
+			}, function (error) {
+				log('Exec ERROR: ', error.message);
+				error.input = input;
+				return error;
 			});
 	},
 	makeExecutableUrl: makeExecutableUrl,
@@ -65,189 +69,202 @@ function resolve(urlPath, execDirection) {
 // Note: Execution is always LTR,
 // 		but notice parse handles execution dir.
 function execute(tokens) {
-	var inputTokens = _.clone(tokens)
-	
-	function number(token) {
-		return parseFloat(token.word);
-	}
+	try {
+		var inputTokens = _.clone(tokens)
 
-	function numberOrString(token) {
-		var num = number(token);
-		
-		if (num) return num;
+		function number(token) {
+			return parseFloat(token.word);
+		}
 
-		return token.toString();
-	}
-
-	function quotation(token) {
-		// Probably a duck
-		return token._isQuotation ? token : undefined;
-	}
-
-	function boole(token) {
-		console.log(token.booleanValue())
-		return token.booleanValue();
-	}
-
-	var stack = [],
-		push = stack.push.bind(stack), 
-		pop = function (valueFunction) {
-			log('Pop');
-			valueFunction = valueFunction || 
-				function (t) { return t; };
-
-			if (_.isEmpty(stack) || ! _.last(stack)) {
-				throw new Error('Popping Empty Stack!');
-			}
+		function numberOrString(token) {
+			var num = number(token);
 			
-			var val = valueFunction(stack.pop());
+			if (num) return num;
 
-			if (typeof val === 'undefined') {
-				throw new Error('Value on stack incorrect type');
-			}
+			return token.toString();
+		}
 
-			return val;
-		},
-		next = function () {
-			log('About to next');
-			log('Tokens: ', tokens);
-			log('Stack: ', stack);
+		function quotation(token) {
+			// Probably a duck
+			return token._isQuotation ? token : undefined;
+		}
 
-			// .pop() <== right to left
-			// .shift() ==> left to right
-			return tokens.shift();
-		},
-		rewind = function (input) {
-			log('About to rewind');
-			log('Tokens: ', tokens);
-			log('Stack: ', stack);
+		function boole(token) {
+			log('Boole: ', token.booleanValue())
+			return token.booleanValue();
+		}
 
-			return tokens.unshift(input);
-		},
-		math = {
-			two_nums: function (op) {
-				log('Binary func: ', op);
-				var result = 
-					op(pop(number), pop(number));
-				push(TokenFactory.basic(result));
-			},
-			two_nums_or_strings: function (op) {
-				log('Binary func: ', op);
-				var result = op(pop(numberOrString) , pop(numberOrString));
-				push(TokenFactory.basic(result));
-			}
-		},
-		binary = Utility.binary,
-		unary = Utility.unary,
-		ops = {
-			'+': function () {
-				return math.two_nums_or_strings(binary.sum);
-			},
-			'-': function () {
-				return math.two_nums(binary.difference);
-			},
-			'*': function () {
-				return math.two_nums(binary.product);
-			},
-			'/': function () {
-				return math.two_nums(binary.quotient);
-			},
-			'%': function () {
-				return math.two_nums(binary.remainder);
-			},
-			'[': function () {
-				var quotation = TokenFactory.quotation(this);
+		var stack = [],
+			push = stack.push.bind(stack), 
+			pop = function (valueFunction) {
+				log('Pop');
+				valueFunction = valueFunction || 
+					function (t) { return t; };
+
+				if (_.isEmpty(stack) || ! _.last(stack)) {
+					throw new Error('Popping Empty Stack!');
+				}
 				
-				for (var n = next(); n.word !== ']';
-						n = next()) {
-					quotation.words.push(n);
+				var val = valueFunction(stack.pop());
+				log('VAL COMING OFF', val)
+
+				if (typeof val === 'undefined') {
+					throw new Error('Value on stack incorrect type');
 				}
 
-				push(quotation);
+				return val;
 			},
-			']': function () {
-				// Should have been consumed by ops['[']
-				throw new Error('Unmatched End Quote ]')
+			next = function () {
+				log('About to next');
+				log('Tokens: ', tokens);
+				log('Stack: ', stack);
+
+				// .pop() <== right to left
+				// .shift() ==> left to right
+				return tokens.shift();
 			},
-			':apply': function () {
-				var quotation = pop(quotation);
+			rewind = function (input) {
+				log('About to rewind');
+				log('Tokens: ', tokens);
+				log('Stack: ', stack);
 
-				if ( ! quotation) throw new Error('Apply called without quotation on top of stack');
-
-				var words = quotation.words;
-				log('Quotation words: ', words);
-				function nextWord() {
-					log('About to next from Quotation words: ', words);
-					return words.pop();
+				return tokens.unshift(input);
+			},
+			math = {
+				two_nums: function (op) {
+					log('Binary func: ', op);
+					var result = 
+						op(pop(number), pop(number));
+					push(TokenFactory.basic(result));
+				},
+				two_nums_or_strings: function (op) {
+					log('Binary func: ', op);
+					var result = op(pop(numberOrString) , pop(numberOrString));
+					push(TokenFactory.basic(result));
 				}
+			},
+			binary = Utility.binary,
+			unary = Utility.unary,
+			ops = {
+				'+': function () {
+					return math.two_nums_or_strings(binary.sum);
+				},
+				'-': function () {
+					return math.two_nums(binary.difference);
+				},
+				'*': function () {
+					return math.two_nums(binary.product);
+				},
+				'/': function () {
+					return math.two_nums(binary.quotient);
+				},
+				'%': function () {
+					return math.two_nums(binary.remainder);
+				},
+				'[': function () {
+					var quotation = TokenFactory.quotation(this);
+					
+					for (var n = next(); n.word !== ']';
+							n = next()) {
+						quotation.words.push(n);
+					}
 
-				// Shove the quotation tokens
-				// back down the muzzle
-				for (var token = nextWord(); token;
-						token = nextWord()) {
-					rewind(token);
+					push(quotation);
+				},
+				']': function () {
+					// Should have been consumed by ops['[']
+					throw new Error('Unmatched End Quote ]')
+				},
+				':apply': function () {
+					var quotation = pop(quotation);
+
+					if ( ! quotation) throw new Error('Apply called without quotation on top of stack');
+
+					var words = quotation.words;
+					log('Quotation words: ', words);
+					function nextWord() {
+						log('About to next from Quotation words: ', words);
+						return words.pop();
+					}
+
+					// Shove the quotation tokens
+					// back down the muzzle
+					for (var token = nextWord(); token;
+							token = nextWord()) {
+						rewind(token);
+					}
+
+					// Note: No Push!!
+				},
+				':if': function () {
+					var test = pop(boole);
+					var caseTrue = pop(quotation);
+					var caseFalse = pop(quotation);
+
+					push( test ? caseTrue : caseFalse );
+
+					ops[':apply']();
+				},
+				value: function () {
+					// TODO: What if we let files pass through?
+					// OR do something with them!
+					// if (fileName(this)) {
+					// 	// Empty out stack, and...
+					//	while (pop()) {};
+					//  return; // ... something better
+					// }
+
+					push(this);
+				},
+				':gif': function () {
+					var word = pop().word;
+					
+					var gifHolder = TokenFactory.create({ 
+						word: word,
+						gif: 'loading.gif'
+					});
+					
+					var srcSet = function (src) {
+						gifHolder.gif = src;
+					};
+
+					var srcGet = function (gif) {
+						return gif.src;
+					}
+
+					Giphy.translate(word)
+						.then(srcGet)
+						.done(srcSet, 
+							srcSet.bind(null, 'noResults.gif'));
+
+					push(gifHolder);
 				}
+			};
 
-				// Note: No Push!!
-			},
-			':if': function () {
-				var test = pop(boole);
-				var caseTrue = pop(quotation);
-				var caseFalse = pop(quotation);
+		// Main Loop! - Consume all the tokens
+		for (var token = next(); token; token = next()) {
+			var op = ops[token.operator];
+			op.apply(token);
+		}
 
-				push( test ? caseTrue : caseFalse );
+		log('Tokens: ', tokens);
+		log('Stack: ', stack);
 
-				ops[':apply']();
-			},
-			value: function () {
-				// TODO: What if we let files pass through?
-				// OR do something with them!
-				// if (fileName(this)) {
-				// 	// Empty out stack, and...
-				//	while (pop()) {};
-				//  return; // ... something better
-				// }
-
-				push(this);
-			},
-			':gif': function () {
-				var word = pop().word;
-				
-				var gifHolder = TokenFactory.create({ 
-					word: word,
-					gif: 'loading.gif'
-				});
-				
-				var srcSet = function (src) {
-					gifHolder.gif = src;
-				};
-
-				var srcGet = function (gif) {
-					return gif.src;
-				}
-
-				Giphy.translate(word)
-					.then(srcGet)
-					.done(srcSet, 
-						srcSet.bind(null, 'noResults.gif'));
-
-				push(gifHolder);
+		return Q.resolve({
+			afterParsing: tokens.toString(),
+			inputTokens: inputTokens,
+			output: stack.toString(),
+			outputTokens: stack
+		});
+	} catch (e) {
+		// Poor excuse for promise support
+		log('EXECUTE REJECTING', e.message);
+		return Q.reject({
+			error: {
+				message: e.message,
+				stack: e.stack,
+				type: e.type
 			}
-		};
-
-	// Main Loop! - Consume all the tokens
-	for (var token = next(); token; token = next()) {
-		var op = ops[token.operator];
-		op.apply(token);
+		});
 	}
-
-	log('Tokens: ', tokens);
-	log('Stack: ', stack);
-
-	return Q.resolve({
-		afterParsing: tokens.toString(),
-		inputTokens: inputTokens,
-		output: stack.toString(),
-		outputTokens: stack
-	});
 }

@@ -12,33 +12,32 @@ describe('executor', function(){
 
   it('deterministic', function(done){
     var promises = [];
+    function push(expected, input) {
+      promises.push(resolve(input, expected))
+    }
 
     _.each({
       '/2/2/+': '4',
       '/3/2/*': '6',
+      '/2 2 +': '4',
       '/bob/sue/+': 'suebob',
-      '/3/3/2/*/+': '8',
-      '': ''
-    }, function (expected, input) {
-      promises.push(
-        concatenative.resolve(input)
-          .then(function (result) {
-            return { 
-              input: input,
-              result: result,
-            }
-          })
-      );
-    });
+      '/3/3/2/*/+': '9',
+      '': '',
 
-    Q.all(promises) 
-      .done(function (results) {
-        _.each(results, function (r)  {
-          log('Result:', r)
-          expect(r.output).to.equal(r.expected);
-        });
-        done();
-      });
+      '[ false ] [ true ] 0 :if': 'false',
+      '[ false ] [ true ] 1 :if': 'true',
+      '[ false ] [ 5 ] 1 :if': '5'
+    }, push);
+
+    Q.all(promises).then(function () {
+      done()
+    });
   });
 
+  function resolve(input, output) {
+    return concatenative.resolve(input)
+      .done(function (result) {
+        expect(result.output).to.eql(output)
+      })
+  }
 });

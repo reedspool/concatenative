@@ -1,23 +1,24 @@
 extends layout
 
 mixin tokens(ts)
-  +codeBlock('Tokens')
+  +codeBlock('Tokens', ts)
     span [
     div.inset
       - each t in ts
         +token(t)
     span ]
 
-mixin codeBlock(title)
-  div.inset.codeBlock
-    span.title= title
-    div.inset
-      code
-        block
+mixin codeBlock(title, dependsOn)
+  if dependsOn
+    div.inset.codeBlock
+      span.title= title
+      div.inset
+        code
+          block
 
 
 mixin token(t)
-  +codeBlock('Token')
+  +codeBlock('Token', t)
     span {
       div.inset
         div word: #{t.word}
@@ -29,44 +30,47 @@ mixin token(t)
     span }
  
 mixin repeatLink()
-  a(href='#{ repeatUrl }') #{ repeatUrl }
+  a(href='#{ repeatUrl }') #{ decodeURIComponent(repeatUrl) }
 
 block content
   h1= title
 
-  if input
-    +codeBlock('Input:')
-      div= input
+  +codeBlock('Input:', input)
+    div= input
 
-    +codeBlock('Output.toString():')
+  +codeBlock('Error:', error)
+    div= error.message
+
+  +codeBlock('Output.toString():', output)
       div= output
-    p You just executed a program! Check out what happened below!
-    p 
-      span p.s. you can do it again any time with this link: 
-      +repeatLink()
+      p You just executed a program! Check out what happened below!
+      p 
+        span p.s. you can do it again any time with this link: 
+        +repeatLink()
 
 
   div
     p Try it out by typing a program here:
-    input(type='text').inputText
+    input(type='text',value=input).inputText
 
-    p Then use the following link to execute it!
+    p Then hit <strong>Enter</strong> or use the following link to execute it!
     div.inputUrl
 
 
-  if input
+  if input && output
     h2 Dry look
 
-    +codeBlock('Input:')
+    +codeBlock('Input:', input)
       div= input
 
-    +codeBlock('Output.toString():')
+    +codeBlock('Output.toString():', output)
       div= output
 
+  if inputTokens && outputTokens
     h2 Wet look
 
-    +codeBlock('Input:')
+    +codeBlock('Input:', inputTokens)
       +tokens(inputTokens)
 
-    +codeBlock('Output:')
+    +codeBlock('Output:', outputTokens)
       +tokens(outputTokens)

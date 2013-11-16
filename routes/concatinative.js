@@ -8,20 +8,31 @@ var sys = require('sys');
 var _ = require('underscore');
 var Q = require('q');
 
-exports.exec = function (req, res) {
-	execute(req)
-		.done(function (data) {
-			res.render('concatinative', data);
-		});
-};
+exports.exec = responder(makeRenderer)
 
-exports.json = function(req, res) {
-	execute(req)
-		.done(function (data) {
-			res.writeHead(200, {"Content-Type": "application/json"});
-			res.write(JSON.stringify(data));
-			res.end();
-		});
+exports.json = responder(makeJsonRenderer)
+
+function responder(createRenderer) {
+	return function(req, res) {	
+		var renderer = createRenderer(res);	
+		execute(req)
+			.then(renderer, renderer)
+			.done();
+	}
+}
+function makeRenderer(res) {
+	return function (data) {
+		res.render('concatinative', data);		
+	}
+}
+
+function makeJsonRenderer(res) {
+	return function (data) {
+		log('Writing data', data)
+		res.writeHead(200, {"Content-Type": "application/json"});
+		res.write(JSON.stringify(data));
+		res.end();
+	}
 }
 
 function execute (req) {
@@ -29,6 +40,7 @@ function execute (req) {
 
 	return concat.executeFromUrlPath(req.url)
 		.then(function (data) {
+			log('Writing data', data)
 			return _.extend(data, {
 				title: 'Concatenative URL Language',
 				repeatUrl: concat.makeExecutableUrl(req)
