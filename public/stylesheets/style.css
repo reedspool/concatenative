@@ -8,3 +8,7 @@ a {
 .inset {
   margin-left: 14px;
 }
+.inputText {
+  width: 500px;
+  font-size: 1.3em;
+}

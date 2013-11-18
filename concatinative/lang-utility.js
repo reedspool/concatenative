@@ -3,7 +3,7 @@ var sys = require('sys');
 
 module.exports = {
 	log: log,
-	binary: {
+	binary: _.extend({
 		sum: function (a, b) { return a + b; },
 		difference: function (a, b) { return a - b; },
 		quotient: function (a, b) { return a / b; },
@@ -14,13 +14,20 @@ module.exports = {
 		access: function (a, b) {
 			if (typeof a == 'undefined') throw new Error('Attempted access on undefined!')
 			return a[b];
-		}
-	},
+		},
+		max: Math.max
+	}),
 	unary: {
 		minus: function (a) { return -1 * a; },
 		not: function (a) { return ! a; }		
-	}
+	},
+	makeExecutableUrl: makeExecutableUrl
 };
+
+function makeExecutableUrl(req, path) {
+	path = path || req.url;
+	return req.protocol + "://" + req.get('host') + path;
+}
 
 function log() {
 	_.each(arguments, function (arg) {

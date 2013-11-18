@@ -31,38 +31,35 @@ var DEFAULT_EXEC_DIRECTION = 'ltr';
 
 module.exports = {
 	resolve: resolve,
-	executeFromUrlPath: function (path) {
-		path = path.match(/^[\/]{0,1}(exec|json)\/(.*)/);
-
-		if ( ! path ) throw new Error('Exec hit with no path')
-
-		var input = decodeURIComponent(path[2]);
-
-		return resolve(input, 'ltr')
-			.then(function (result) {
-				log('Exec result: ', result.output);
-				result.input = input;
-				return result;
-			}, function (error) {
-				log('Exec ERROR: ', error.message);
-				error.input = input;
-				return error;
-			});
-	},
-	makeExecutableUrl: makeExecutableUrl,
+	makeExecutableUrl: Utility.makeExecutableUrl,
+	executeFromUrlPath: executeFromUrlPath,
 	execute: execute
 };
-
-function makeExecutableUrl(req, path) {
-	path = path || req.url;
-	return req.protocol + "://" + req.get('host') + path;
-}
 
 function resolve(urlPath, execDirection) {
 	execDirection = execDirection || DEFAULT_EXEC_DIRECTION;
 
 	return Parser.parse(urlPath, execDirection)
 		.then(execute);
+}
+
+function executeFromUrlPath(path) {
+	path = path.match(/^[\/]{0,1}(exec|json|html)\/(.*)/);
+
+	if ( ! path ) throw new Error('Exec hit with no path')
+
+	var input = decodeURIComponent(path[2]);
+
+	return resolve(input, 'ltr')
+		.then(function (result) {
+			log('Exec result: ', result.output);
+			result.input = input;
+			return result;
+		}, function (error) {
+			log('Exec ERROR: ', error.message);
+			error.input = input;
+			return error;
+		});
 }
 
 // Execute our program!
@@ -78,6 +75,10 @@ function execute(tokens) {
 	try {
 		var inputTokens = _.clone(tokens)
 
+		function string(token) {
+			return token.word.toString();
+		}
+
 		function number(token) {
 			return parseFloat(token.word);
 		}
@@ -87,7 +88,7 @@ function execute(tokens) {
 			
 			if (num) return num;
 
-			return token.toString();
+			return string(token);
 		}
 
 		function quotation(token) {
@@ -132,40 +133,49 @@ function execute(tokens) {
 
 				return tokens.unshift(input);
 			},
+			binaryUtil = Utility.binary,
+			unaryUtil = Utility.unary,
 			math = {
-				two_nums: function (op) {
-					executionLog('Binary func: ', op);
-					var result = 
-						op(pop(number), pop(number));
-					push(TokenFactory.basic(result));
-				},
-				two_nums_or_strings: function (op) {
-					executionLog('Binary func: ', op);
-					var result = op(pop(numberOrString) , pop(numberOrString));
-					push(TokenFactory.basic(result));
+				two: function(origOp, what, whatB) {
+					return function () {
+						op = binaryUtil[origOp];
+						whatB = whatB || what;
+
+						if (! op || ! what) throw new Error('Binary op gone wrong op: ' + op + ' originalOp: ' + origOp + ' what: ' + what)
+						
+						var result = op(pop(what), pop(whatB));
+						
+						push(TokenFactory.basic(result));
+					}
 				}
 			},
-			binary = Utility.binary,
-			unary = Utility.unary,
 			ops = {
-				'+': function () {
-					return math.two_nums_or_strings(binary.sum);
-				},
-				'-': function () {
-					return math.two_nums(binary.difference);
-				},
-				'*': function () {
-					return math.two_nums(binary.product);
-				},
-				'/': function () {
-					return math.two_nums(binary.quotient);
-				},
-				'%': function () {
-					return math.two_nums(binary.remainder);
+				'+': math.two('sum', numberOrString),
+				'-': math.two('difference', number),
+				'*': math.two('product', number),
+				'/': math.two('quotient', number),
+				'%': math.two('remainder', number),
+				':max': math.two('max', number),
+				':quote': function () {
+					// Pop whatever's on the stack
+					var arg = pop(),
+						quotation = TokenFactory.quotation({
+							seperator: this.seperator
+						});
+
+					// Wrap it in a quotation
+					quotation.words.push(arg);
+
+					// Push it back
+					push(quotation);
 				},
 				'[': function () {
+					// This is the only function currently which
+					// pulls things from the input stream!
 					executionLog('Quotation begun');
-					var quo = TokenFactory.quotation(this),
+					var quo = TokenFactory.quotation({
+							seperator: this.seperator
+						}),
 						myself = arguments.callee
 
 					for (var n = next(); n && n.word !== ']';
@@ -185,6 +195,12 @@ function execute(tokens) {
 
 					push(quo);
 				},
+				':link': function () {
+					var protocol = pop(string),
+						hrefQuotation = pop(quotation);
+
+					push(TokenFactory.link(protocol, hrefQuotation))
+				},
 				']': function () {
 					// Should have been consumed by ops['[']
 					throw new Error('Unmatched End Quote ]')
@@ -195,9 +211,9 @@ function execute(tokens) {
 					if ( ! quotation) throw new Error('Apply called without quotation on top of stack');
 
 					var words = quotation.words;
-					log('Quotation words: ', words);
+					executionLog('Quotation words: ', words);
 					function nextWord() {
-						log('About to next from Quotation words: ', words);
+						executionLog('About to next from Quotation words: ', words);
 						return words.pop();
 					}
 
@@ -230,7 +246,17 @@ function execute(tokens) {
 
 					push(this);
 				},
+				':random': function () {
+					throw new Error('Random?!')
+				},
 				':gif': function () {
+					var word = pop().word,
+						gifHolder = TokenFactory.create({ 
+							word: word,
+							gif: 'loading.gif'
+						}),
+						errorSet = srcSet.bind(null, 'noResults.gif');
+
 					function srcSet(src) {
 						gifHolder.gif = src;
 					}
@@ -238,13 +264,6 @@ function execute(tokens) {
 					function srcGet(gif) {
 						return gif.src;
 					}
-
-					var word = pop().word,
-						gifHolder = TokenFactory.create({ 
-							word: word,
-							gif: 'loading.gif'
-						}),
-						errorSet = srcSet.bind(null, 'noResults.gif');
 
 					Giphy.translate(word)
 						.then(srcGet)
@@ -267,7 +286,10 @@ function execute(tokens) {
 			afterParsing: tokens.toString(),
 			inputTokens: inputTokens,
 			output: stack.toString(),
-			outputTokens: stack
+			outputTokens: stack,
+			html: _.map(stack, function (token) {
+				return token.toHtml();
+			}).join('<br />')
 		});
 	} catch (e) {
 		// Poor excuse for promise support

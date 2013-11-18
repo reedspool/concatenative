@@ -22,15 +22,20 @@ mixin token(t)
     span {
       div.inset
         div word: #{t.word}
+        div description: #{t.description}
         div seperator: #{t.seperator}
         div operator: #{t.operator}
+        a(href="/exec/#{t.toUriComponent()}") execute: #{ t.toString() }
         if t.words
           div words:
             +tokens(t.words)
     span }
  
 mixin repeatLink()
-  a(href='#{ repeatUrl }') #{ decodeURIComponent(repeatUrl) }
+  if repeatUrl
+    a(href='#{ repeatUrl }') #{ decodeURIComponent(repeatUrl) }
+  if ! repeatUrl
+    a(href='/') No link available. :(
 
 block content
   h1= title
@@ -41,8 +46,10 @@ block content
   +codeBlock('Error:', error)
     div= error.message
 
-  +codeBlock('Output.toString():', output)
-      div= output
+  +codeBlock('HTML:', html)
+    | !{html}
+
+  +codeBlock('Woah!', output)
       p You just executed a program! Check out what happened below!
       p 
         span p.s. you can do it again any time with this link: 

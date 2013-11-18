@@ -8,19 +8,20 @@ var sys = require('sys');
 var _ = require('underscore');
 var Q = require('q');
 
-exports.exec = responder(makeRenderer)
+exports.exec = responder(makeInterpreterRenderer)
 
 exports.json = responder(makeJsonRenderer)
 
-function responder(createRenderer) {
+function responder(makeRenderer) {
 	return function(req, res) {	
-		var renderer = createRenderer(res);	
+		var renderer = makeRenderer(res);	
 		execute(req)
 			.then(renderer, renderer)
 			.done();
 	}
 }
-function makeRenderer(res) {
+
+function makeInterpreterRenderer(res) {
 	return function (data) {
 		res.render('concatinative', data);		
 	}

@@ -4,7 +4,7 @@ module.exports = {
 	create: create,
 	basic: basic,
 	quotation: quotation,
-
+	link: link
 };
 
 function create(data) {
@@ -29,7 +29,10 @@ function create(data) {
 
 		// This syntax is for giggles, I don't expect
 		// it to work this way forever
+		case ':link':
+		case ':max':
 		case ':if':
+		case ':quote':
 		case ':apply':
 		case ':gif':
 			token.operator = token.word;
@@ -44,6 +47,7 @@ function _BasicToken() {
 	this.seperator = '/';
 	// quacks like a duck;
 	this._isToken = true;
+	this.description = 'Not very exciting. I\'m just me.';
 }
 
 _BasicToken.prototype.toString = function () {
@@ -56,15 +60,27 @@ _BasicToken.prototype.booleanValue = function () {
 	return isQuotientAndEmpty || ! isCharacterZero ;
 }
 
+_BasicToken.prototype.toHtml = function (template) {
+	var basicTemplate = '<a class="token" href="/exec/<%= toUriComponent() %>"><%= toString() %></a>';
+	template = template || basicTemplate;
+	var maker = _.template(template);
+	return maker(this);
+}
+
+_BasicToken.prototype.toUriComponent = function () {
+	return encodeURIComponent(this.toString());
+}
+
 function basic(word) {
 	return create({ word: word });
 }
 
 function quotation(data) {
-	_.extend(data, {
+	data = _.extend({
 		word: 'quotation', 
 		words: [],
 		operator: 'value',
+		description: 'Your very own little program!',
 		// quacks like a duck
 		_isQuotation: true,
 		toString: function () {
@@ -73,6 +89,28 @@ function quotation(data) {
 			});
 
 			return '[ ' + guts.join(' ') + ' ]';
+		}
+	}, data);
+
+	return create(data);
+}
+
+function link(protocol, quotation) {
+	var data = _.extend({
+		word: 'link',
+		href: protocol + '://' + quotation.words.join('/'),
+		operator: 'link',
+		description: 'A portal to another piece of the Interweb.',
+		toString: function () {
+			// This is why I want atomic URLs!
+			return quotation.toString() + ' ' + protocol + ' :link';
+		},
+		toHtml: function () {
+			var template = '<a class="linkToken" href="/exec/<%= encodeURIComponent(toString()) %>"><%= toString() %></a>' +
+							'<span> Follow it! </span><a class="link" href="<%= href %>"><%= href %></a>';
+
+			// symptom of BROKE AS F*#$ 'INHERITANCE'
+			return _BasicToken.prototype.toHtml.call(this,template);
 		}
 	});
 

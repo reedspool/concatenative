@@ -33,6 +33,7 @@ describe('executor', function(){
       // Quotations
       '[ 2 ]': '[ 2 ]',
       '[ abcd ]': '[ abcd ]',
+      '5 :quote': '[ 5 ]',
 
       // Composition of quotations
       '[ [ 2 2 + ] ]': '[ [ 2 2 + ] ]',
@@ -44,11 +45,22 @@ describe('executor', function(){
 
       // Application of composition of quotations
       '[ [ 2 2 + ] :apply ] :apply': '4',
+      '[ 4 ] :apply :quote': '[ 4 ]',
+      '[ [ 2 2 + ] :quote :apply ] :apply': '4',
 
       // Conditional branching
       '[ false ] [ true ] 0 :if': 'false',
       '[ false ] [ true ] 1 :if': 'true',
-      '[ false ] [ 5 ] 1 :if': '5'
+      '[ false ] [ 5 ] 1 :if': '5',
+
+      // JS Math pass-through
+      '4 5 :max': '5',
+      '-1 300 :max': '300',
+
+      // Links
+      '[ www.google.com ] http :link': '[ www.google.com ] http :link',
+
+      '': 'should finally fail here'
     }, push);
 
     Q.all(promises).then(function () {
