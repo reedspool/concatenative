@@ -17,13 +17,35 @@ describe('executor', function(){
     }
 
     _.each({
+      // Basic arithmetic
       '/2/2/+': '4',
       '/3/2/*': '6',
       '/2 2 +': '4',
-      '/bob/sue/+': 'suebob',
+      // javascript-like + operator
+      '/bob/sue/+': 'suebob', 
+      
+      // Composition
       '/3/3/2/*/+': '9',
+
+      // Base case empty string input
       '': '',
 
+      // Quotations
+      '[ 2 ]': '[ 2 ]',
+      '[ abcd ]': '[ abcd ]',
+
+      // Composition of quotations
+      '[ [ 2 2 + ] ]': '[ [ 2 2 + ] ]',
+      '[ [ abc efg + ] :apply ]': '[ [ abc efg + ] :apply ]',
+
+      // Application of quotations
+      '[ 2 2 + ] :apply': '4',
+      '3 [ 3 * ] :apply': '9',
+
+      // Application of composition of quotations
+      '[ [ 2 2 + ] :apply ] :apply': '4',
+
+      // Conditional branching
       '[ false ] [ true ] 0 :if': 'false',
       '[ false ] [ true ] 1 :if': 'true',
       '[ false ] [ 5 ] 1 :if': '5'
@@ -31,13 +53,20 @@ describe('executor', function(){
 
     Q.all(promises).then(function () {
       done()
-    });
+    }, function (error) {
+      console.error('Error')
+      console.error(error);
+      return error;
+    }).done();
   });
 
   function resolve(input, output) {
     return concatenative.resolve(input)
-      .done(function (result) {
+      .then(function (result) {
         expect(result.output).to.eql(output)
+      }, function (error) {
+        console.log(error);
+        throw error;
       })
   }
 });

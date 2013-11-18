@@ -64,6 +64,7 @@ function quotation(data) {
 	_.extend(data, {
 		word: 'quotation', 
 		words: [],
+		operator: 'value',
 		// quacks like a duck
 		_isQuotation: true,
 		toString: function () {
@@ -71,7 +72,7 @@ function quotation(data) {
 				return token.toString();
 			});
 
-			return '[ ' + guts.join(' ') + ' ] ';
+			return '[ ' + guts.join(' ') + ' ]';
 		}
 	});
 

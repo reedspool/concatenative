@@ -69,6 +69,12 @@ function resolve(urlPath, execDirection) {
 // Note: Execution is always LTR,
 // 		but notice parse handles execution dir.
 function execute(tokens) {
+	function executionLog() {
+		log.apply(this, arguments);
+		log('Tokens: ', tokens);
+		log('Stack: ', stack);
+	}
+
 	try {
 		var inputTokens = _.clone(tokens)
 
@@ -90,14 +96,14 @@ function execute(tokens) {
 		}
 
 		function boole(token) {
-			log('Boole: ', token.booleanValue())
+			executionLog('Boole: ', token.booleanValue())
 			return token.booleanValue();
 		}
 
 		var stack = [],
 			push = stack.push.bind(stack), 
 			pop = function (valueFunction) {
-				log('Pop');
+				executionLog('Pop w/ func ' + valueFunction);
 				valueFunction = valueFunction || 
 					function (t) { return t; };
 
@@ -106,7 +112,7 @@ function execute(tokens) {
 				}
 				
 				var val = valueFunction(stack.pop());
-				log('VAL COMING OFF', val)
+				executionLog('value post func: ', val)
 
 				if (typeof val === 'undefined') {
 					throw new Error('Value on stack incorrect type');
@@ -115,30 +121,26 @@ function execute(tokens) {
 				return val;
 			},
 			next = function () {
-				log('About to next');
-				log('Tokens: ', tokens);
-				log('Stack: ', stack);
+				executionLog('About to next');
 
 				// .pop() <== right to left
 				// .shift() ==> left to right
 				return tokens.shift();
 			},
 			rewind = function (input) {
-				log('About to rewind');
-				log('Tokens: ', tokens);
-				log('Stack: ', stack);
+				executionLog('About to rewind');
 
 				return tokens.unshift(input);
 			},
 			math = {
 				two_nums: function (op) {
-					log('Binary func: ', op);
+					executionLog('Binary func: ', op);
 					var result = 
 						op(pop(number), pop(number));
 					push(TokenFactory.basic(result));
 				},
 				two_nums_or_strings: function (op) {
-					log('Binary func: ', op);
+					executionLog('Binary func: ', op);
 					var result = op(pop(numberOrString) , pop(numberOrString));
 					push(TokenFactory.basic(result));
 				}
@@ -162,14 +164,26 @@ function execute(tokens) {
 					return math.two_nums(binary.remainder);
 				},
 				'[': function () {
-					var quotation = TokenFactory.quotation(this);
-					
-					for (var n = next(); n.word !== ']';
+					executionLog('Quotation begun');
+					var quo = TokenFactory.quotation(this),
+						myself = arguments.callee
+
+					for (var n = next(); n && n.word !== ']';
 							n = next()) {
-						quotation.words.push(n);
+
+						// If we found another quotation
+						if (n.word == '[') {
+							// Use myself to push a quotation
+							myself.apply(n);
+							n = pop(quotation);
+						}
+
+						quo.words.push(n);
 					}
 
-					push(quotation);
+					if (typeof n == 'undefined') throw new Error('Unmatched [')
+
+					push(quo);
 				},
 				']': function () {
 					// Should have been consumed by ops['[']
@@ -197,9 +211,9 @@ function execute(tokens) {
 					// Note: No Push!!
 				},
 				':if': function () {
-					var test = pop(boole);
-					var caseTrue = pop(quotation);
-					var caseFalse = pop(quotation);
+					var test = pop(boole),
+						caseTrue = pop(quotation),
+						caseFalse = pop(quotation);
 
 					push( test ? caseTrue : caseFalse );
 
@@ -217,25 +231,25 @@ function execute(tokens) {
 					push(this);
 				},
 				':gif': function () {
-					var word = pop().word;
-					
-					var gifHolder = TokenFactory.create({ 
-						word: word,
-						gif: 'loading.gif'
-					});
-					
-					var srcSet = function (src) {
+					function srcSet(src) {
 						gifHolder.gif = src;
-					};
+					}
 
-					var srcGet = function (gif) {
+					function srcGet(gif) {
 						return gif.src;
 					}
 
+					var word = pop().word,
+						gifHolder = TokenFactory.create({ 
+							word: word,
+							gif: 'loading.gif'
+						}),
+						errorSet = srcSet.bind(null, 'noResults.gif');
+
 					Giphy.translate(word)
 						.then(srcGet)
-						.done(srcSet, 
-							srcSet.bind(null, 'noResults.gif'));
+						.then(srcSet, errorSet)
+						.done()
 
 					push(gifHolder);
 				}
@@ -247,8 +261,7 @@ function execute(tokens) {
 			op.apply(token);
 		}
 
-		log('Tokens: ', tokens);
-		log('Stack: ', stack);
+		executionLog('Done resolving!');
 
 		return Q.resolve({
 			afterParsing: tokens.toString(),
@@ -258,7 +271,7 @@ function execute(tokens) {
 		});
 	} catch (e) {
 		// Poor excuse for promise support
-		log('EXECUTE REJECTING', e.message);
+		executionLog('EXECUTE REJECTING', e.message);
 		return Q.reject({
 			error: {
 				message: e.message,
