@@ -67,9 +67,10 @@ function executeFromUrlPath(path) {
 // 		but notice parse handles execution dir.
 function execute(tokens) {
 	function executionLog() {
-		log.apply(this, arguments);
-		log('Tokens: ', tokens);
-		log('Stack: ', stack);
+		// TODO: SWITCH BETTER
+		// log.apply(this, arguments);
+		// log('Tokens: ', tokens);
+		// log('Stack: ', stack);
 	}
 
 	try {
@@ -85,8 +86,7 @@ function execute(tokens) {
 
 		function numberOrString(token) {
 			var num = number(token);
-			
-			if (num) return num;
+			if (! isNaN(num)) return num;
 
 			return string(token);
 		}
@@ -135,6 +135,7 @@ function execute(tokens) {
 			},
 			binaryUtil = Utility.binary,
 			unaryUtil = Utility.unary,
+			nullaryUtil = Utility.nullary,
 			math = {
 				two: function(origOp, what, whatB) {
 					return function () {
@@ -156,6 +157,32 @@ function execute(tokens) {
 				'/': math.two('quotient', number),
 				'%': math.two('remainder', number),
 				':max': math.two('max', number),
+				':random': function () {
+					var arg = pop(),
+						numArg = number(arg),
+						quotArg = quotation(arg),
+						rand = nullaryUtil.random();
+
+					if ( (! quotArg) && isNaN(numArg) ) throw new Error('Expected quotation or number for :random, got ' + string(arg))
+
+					if (numArg == 0 || numArg) {
+						// If the argument is a number
+						// if 0, rand() ==> [0, 1)
+						// else, floor( n * rand() ) ==> [0, n)
+						var result = numArg == 0 ? nullaryUtil.random() : 
+							unaryUtil.randInt(numArg);
+
+						push(TokenFactory.basic(result));
+					} else {
+						// It must be a quotation. 
+						// Pick one of the quotation's words
+						var words = quotArg.words;
+
+						if (_.isEmpty(words)) throw new Error('Cannot select from empty quotation!')
+
+						push(words[randInt(words.length)]);
+					}
+				},
 				':quote': function () {
 					// Pop whatever's on the stack
 					var arg = pop(),
@@ -168,6 +195,32 @@ function execute(tokens) {
 
 					// Push it back
 					push(quotation);
+				},
+				':append': function () {
+					var quotA = pop(quotation),
+						quotB = pop(quotation);
+
+					quotA.words = quotB.words.concat(quotA.words);
+
+					push(quotA);
+				},
+				':dup': function () {
+					var arg = pop(),
+						clone = arg.clone();
+
+					push(arg); 
+					push(clone);
+				},
+				':times': function () {
+					var quot = pop(quotation),
+						num = pop(number),
+						dup = ops[':dup'],
+						apply = ops[':apply'];
+
+					for (var i = 0; i < num; i++) {
+						push(quot.clone())
+						apply();
+					}
 				},
 				'[': function () {
 					// This is the only function currently which
@@ -245,9 +298,6 @@ function execute(tokens) {
 					// }
 
 					push(this);
-				},
-				':random': function () {
-					throw new Error('Random?!')
 				},
 				':gif': function () {
 					var word = pop().word,

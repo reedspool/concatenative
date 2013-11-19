@@ -26,17 +26,12 @@ function create(data) {
 		case ']':
 			token.operator = token.word;
 			break;
+	}
 
+	if (token.word[0] == ':') {
 		// This syntax is for giggles, I don't expect
 		// it to work this way forever
-		case ':link':
-		case ':max':
-		case ':if':
-		case ':quote':
-		case ':apply':
-		case ':gif':
-			token.operator = token.word;
-			break;
+		token.operator = token.word;
 	}
 
 	return token;
@@ -58,6 +53,16 @@ _BasicToken.prototype.booleanValue = function () {
 	var isQuotientAndEmpty = this._isQuotation && _.isEmpty(this.words) && true;
 	var isCharacterZero = this.word === '0' && true;
 	return isQuotientAndEmpty || ! isCharacterZero ;
+}
+
+_BasicToken.prototype.clone = function () {
+	var frame = _.clone(this);
+		
+	frame.words = _.map(frame.words, function (word) {
+		return word.clone();
+	});
+
+	return frame;
 }
 
 _BasicToken.prototype.toHtml = function (template) {

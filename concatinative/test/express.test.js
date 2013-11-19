@@ -29,11 +29,18 @@ describe('executor', function(){
 
       // Base case empty string input
       '': '',
+      '5': '5',
+      '2 2': '2 2',
 
       // Quotations
       '[ 2 ]': '[ 2 ]',
       '[ abcd ]': '[ abcd ]',
       '5 :quote': '[ 5 ]',
+
+      // Append quotations together
+      '[ 5 ] [ 2 ] :append': '[ 5 2 ]',
+      '[ 5 2 ] [ + ] :append :apply': '7',
+      '[ 5 2 ] [ 3 4 ] 7 :quote :append :append' : '[ 5 2 3 4 7 ]',
 
       // Composition of quotations
       '[ [ 2 2 + ] ]': '[ [ 2 2 + ] ]',
@@ -46,7 +53,7 @@ describe('executor', function(){
       // Application of composition of quotations
       '[ [ 2 2 + ] :apply ] :apply': '4',
       '[ 4 ] :apply :quote': '[ 4 ]',
-      '[ [ 2 2 + ] :quote :apply ] :apply': '4',
+      '[ [ 2 2 + ] :quote :apply ] :apply :apply': '4',
 
       // Conditional branching
       '[ false ] [ true ] 0 :if': 'false',
@@ -60,7 +67,10 @@ describe('executor', function(){
       // Links
       '[ www.google.com ] http :link': '[ www.google.com ] http :link',
 
-      '': 'should finally fail here'
+      // Dup
+      '5 :dup' : '5 5',
+      '[ 2 3 + ] :dup': '[ 2 3 + ] [ 2 3 + ]',
+      '[ 2 3 + ] :dup :apply': '[ 2 3 + ] 5'
     }, push);
 
     Q.all(promises).then(function () {
@@ -72,10 +82,16 @@ describe('executor', function(){
     }).done();
   });
 
-  function resolve(input, output) {
+  it('non-deterministic', function (done) {
+    // TODO: Test :random
+    done()
+  });
+
+  function resolve(input, expected) {
     return concatenative.resolve(input)
       .then(function (result) {
-        expect(result.output).to.eql(output)
+        var actual = result.outputTokens.join(' ');
+        expect(actual).to.eql(expected)
       }, function (error) {
         console.log(error);
         throw error;

@@ -3,7 +3,7 @@ var sys = require('sys');
 
 module.exports = {
 	log: log,
-	binary: _.extend({
+	binary: {
 		sum: function (a, b) { return a + b; },
 		difference: function (a, b) { return a - b; },
 		quotient: function (a, b) { return a / b; },
@@ -16,10 +16,18 @@ module.exports = {
 			return a[b];
 		},
 		max: Math.max
-	}),
+	},
 	unary: {
 		minus: function (a) { return -1 * a; },
-		not: function (a) { return ! a; }		
+		not: function (a) { return ! a; },
+		randInt: function (n) {
+			return Math.floor(Math.random() * n);
+		}		
+	},
+	nullary: {
+		random: function() {
+			return Math.random();
+		}
 	},
 	makeExecutableUrl: makeExecutableUrl
 };
