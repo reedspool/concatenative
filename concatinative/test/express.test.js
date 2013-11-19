@@ -70,7 +70,12 @@ describe('executor', function(){
       // Dup
       '5 :dup' : '5 5',
       '[ 2 3 + ] :dup': '[ 2 3 + ] [ 2 3 + ]',
-      '[ 2 3 + ] :dup :apply': '[ 2 3 + ] 5'
+      '[ 2 3 + ] :dup :apply': '[ 2 3 + ] 5',
+
+      // Times
+      '0 [ 5 ] :times': '',
+      '1 [ 5 ] :times': '5',
+      '2 [ 5 ] :times': '5 5'
     }, push);
 
     Q.all(promises).then(function () {

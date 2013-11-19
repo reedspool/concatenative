@@ -39,6 +39,8 @@ mixin repeatLink()
 
 block content
   h1= title
+  p Learn more (including syntax): 
+    +documentationLink()
 
   +codeBlock('Input:', input)
     div= input
