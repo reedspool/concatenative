@@ -68,9 +68,9 @@ function executeFromUrlPath(path) {
 function execute(tokens) {
 	function executionLog() {
 		// TODO: SWITCH BETTER
-		// log.apply(this, arguments);
-		// log('Tokens: ', tokens);
-		// log('Stack: ', stack);
+		log.apply(this, arguments);
+		log('Tokens: ', tokens);
+		log('Stack: ', stack);
 	}
 
 	try {
@@ -99,6 +99,10 @@ function execute(tokens) {
 		function boole(token) {
 			executionLog('Boole: ', token.booleanValue())
 			return token.booleanValue();
+		}
+
+		function link(token) {
+			return token._isLink ? token : null;
 		}
 
 		var stack = [],
@@ -215,7 +219,7 @@ function execute(tokens) {
 					var quot = pop(quotation),
 						num = pop(number),
 						dup = ops[':dup'],
-						apply = ops[':apply'];
+						apply = ops[':call'];
 
 					for (var i = 0; i < num; i++) {
 						push(quot.clone())
@@ -254,11 +258,19 @@ function execute(tokens) {
 
 					push(TokenFactory.link(protocol, hrefQuotation))
 				},
+				':get': function () {
+					var format = pop(string),
+						link = pop(link);
+
+					if ( ! link || ! format ) throw new Error('wrong args for :get');
+
+					throw new Error('MEOW!!! TIME TO OWN UP TO SOME FUCKING PROMISES MOTHERFUCKER')
+				},
 				']': function () {
 					// Should have been consumed by ops['[']
 					throw new Error('Unmatched End Quote ]')
 				},
-				':apply': function () {
+				':call': function () {
 					var quotation = pop(quotation);
 
 					if ( ! quotation) throw new Error('Apply called without quotation on top of stack');
@@ -286,17 +298,28 @@ function execute(tokens) {
 
 					push( test ? caseTrue : caseFalse );
 
-					ops[':apply']();
+					ops[':call']();
+				},
+				'>>': function () {
+					var object = pop(),
+						property = string(this);
+						value = object.properties[property]
+					
+					push(value || 
+						TokenFactory.f('NoPropertyValue'));
+				},
+				'<<': function () {
+					var value = pop(),
+						object = pop(),
+						property = string(this);
+
+					// side effect
+					object.properties[property] = value;
+					
+					push(object);
 				},
 				value: function () {
-					// TODO: What if we let files pass through?
-					// OR do something with them!
-					// if (fileName(this)) {
-					// 	// Empty out stack, and...
-					//	while (pop()) {};
-					//  return; // ... something better
-					// }
-
+					// Values are the simplest token.
 					push(this);
 				},
 				':gif': function () {
@@ -322,11 +345,15 @@ function execute(tokens) {
 
 					push(gifHolder);
 				}
+
 			};
 
 		// Main Loop! - Consume all the tokens
 		for (var token = next(); token; token = next()) {
 			var op = ops[token.operator];
+
+			if ( ! op) throw new Error('Unfound operator for word: ' + token.word + ' op:' + token.operator);
+			
 			op.apply(token);
 		}
 
