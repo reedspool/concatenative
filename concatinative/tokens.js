@@ -5,7 +5,8 @@ module.exports = {
 	basic: basic,
 	quotation: quotation,
 	link: link,
-	f: f
+	f: f,
+	gif: gif
 };
 
 function create(data) {
@@ -37,7 +38,7 @@ function create(data) {
 	switch (token.word[0]) {
 		// Anything starting with a ! is the false value
 		case '!':
-			return token;
+			return f(token.word.slice(1));
 
 		case ':':
 			// This syntax is for giggles, I don't expect
@@ -125,12 +126,16 @@ function quotation(data) {
 }
 
 function f(msg) {
-	return create({
-		word: '!' + msg,
+	var token = create({
+		word: 'false',
 		operator: 'value',
 		_isFalse: true,
 		description: 'False value, message: ' + msg
 	});
+
+	token.word = '!' + msg;
+
+	return token;
 }
 
 function link(protocol, urlQuotation) {
@@ -160,6 +165,30 @@ function link(protocol, urlQuotation) {
 			return _BasicToken.prototype.toHtml.call(this,template);
 		}
 	};
+
+	return create(data);
+}
+
+function gif(data) {
+	var data = _.extend({
+			word: 'link',
+			gif: 'loading.gif',
+			_isGif: true,
+			_isLink: true,
+			description: 'A dancing image! From the future!',
+			// TODO: PROTOTYPAL INHERITANCE PLZKTHXBAI
+			toString: function () {
+				// This is why I want atomic URLs!
+				return this.gif + ' :gif';
+			},
+			toHtml: function () {
+				var template = '<a class="linkToken" href="/exec/<%= encodeURIComponent(toString()) %>"><%= toString() %></a>' +
+								'<img class="gif" src="<%= gif %>" />';
+
+				// symptom of BROKE AS F*#$ 'INHERITANCE'
+				return _BasicToken.prototype.toHtml.call(this,template);
+			}
+		}, data);
 
 	return create(data);
 }

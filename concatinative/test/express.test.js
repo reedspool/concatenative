@@ -86,9 +86,9 @@ describe('executor', function(){
 
             // Links
         // Creation
-      '[ www.google.com ] http :link': '[ www.google.com ] http :link',
-        // :get
-      '[ en.wikipedia.org/w/api.php?format=json&action=query&titles=Adolf_Hitler&prop=revisions&rvprop=content ] http :link json :get query>> normalized>> 0>> from>>': 'Adolf_Hitler',
+      // '[ www.google.com ] http :link': '[ www.google.com ] http :link',
+      //   // :get
+      // '[ en.wikipedia.org/w/api.php?format=json&action=query&titles=Adolf_Hitler&prop=revisions&rvprop=content ] http :link json :get query>> normalized>> 0>> from>>': 'Adolf_Hitler',
     }, push);
 
     Q.all(promises).then(function () {

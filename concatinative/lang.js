@@ -324,9 +324,8 @@ function execute(tokens) {
 				},
 				':gif': function () {
 					var word = pop().word,
-						gifHolder = TokenFactory.create({ 
-							word: word,
-							gif: 'loading.gif'
+						gifHolder = TokenFactory.gif({ 
+							word: word
 						}),
 						errorSet = srcSet.bind(null, 'noResults.gif');
 
@@ -338,35 +337,53 @@ function execute(tokens) {
 						return gif.src;
 					}
 
-					Giphy.translate(word)
+					push(gifHolder);
+
+					return Giphy.translate(word)
 						.then(srcGet)
 						.then(srcSet, errorSet)
-						.done()
-
-					push(gifHolder);
 				}
 
 			};
 
-		// Main Loop! - Consume all the tokens
-		for (var token = next(); token; token = next()) {
+		function executeToken(token) {
 			var op = ops[token.operator];
 
 			if ( ! op) throw new Error('Unfound operator for word: ' + token.word + ' op:' + token.operator);
-			
-			op.apply(token);
+		
+			var deferred = Q.defer(),
+				promise = deferred.promise.then(function () {
+					return op.apply(token)
+				});
+
+			deferred.resolve();
+
+			return promise;
 		}
 
-		executionLog('Done resolving!');
+		function executeAll() {
+			var token = next();
 
-		return Q.resolve({
-			afterParsing: tokens.toString(),
-			inputTokens: inputTokens,
-			output: stack.toString(),
-			outputTokens: stack,
-			html: _.map(stack, function (token) {
-				return token.toHtml();
-			}).join('<br />')
+			if ( ! token) {
+				// We're done here
+				return;
+			}
+
+			// Do it, then do it again
+			return executeToken(token).then(executeAll);
+		}
+
+		return executeAll().then(function () {
+			executionLog('Done resolving!');
+			return {
+				afterParsing: tokens.toString(),
+				inputTokens: inputTokens,
+				output: stack.toString(),
+				outputTokens: stack,
+				html: _.map(stack, function (token) {
+					return token.toHtml();
+				}).join('<br />')
+			}
 		});
 	} catch (e) {
 		// Poor excuse for promise support
