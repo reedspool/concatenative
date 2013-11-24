@@ -184,7 +184,7 @@ function execute(tokens) {
 
 						if (_.isEmpty(words)) throw new Error('Cannot select from empty quotation!')
 
-						push(words[randInt(words.length)]);
+						push(words[unaryUtil.randInt(words.length)]);
 					}
 				},
 				':quote': function () {
@@ -223,6 +223,21 @@ function execute(tokens) {
 
 					for (var i = 0; i < num; i++) {
 						push(quot.clone())
+						apply();
+					}
+				},
+				':each': function () {
+					var actionQuot = pop(quotation),
+						listQuo = pop(quotation),
+						list = listQuo.words,
+						apply = ops[':call'];
+
+					log('List', list)
+					for (var i = 0; i < list.length; i++) {
+						push(list[i].clone());
+						log('CLONED word: ', list[i].clone());
+						push(actionQuot.clone());
+						log('CLONED action: ', actionQuot.clone());
 						apply();
 					}
 				},

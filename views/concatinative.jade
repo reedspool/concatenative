@@ -16,7 +16,6 @@ mixin codeBlock(title, dependsOn)
         code
           block
 
-
 mixin token(t)
   +codeBlock('Token', t)
     span {
@@ -52,10 +51,12 @@ block content
     | !{html}
 
   +codeBlock('Woah!', output)
-      p You just executed a program! Check out what happened below!
-      p 
-        span p.s. you can do it again any time with this link: 
-        +repeatLink()
+    p You just executed a program! Check out what happened below!
+    p 
+      span p.s. you can do it again any time with this link: 
+      +repeatLink()
+  +codeBlock('Empty string output!', output == '')
+    p The output was blank, aka "".
 
 
   div
