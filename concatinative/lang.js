@@ -67,17 +67,26 @@ function executeFromUrlPath(path) {
 // 		but notice parse handles execution dir.
 function execute(tokens) {
 	function executionLog() {
-		// TODO: SWITCH BETTER
-		log.apply(this, arguments);
-		log('Tokens: ', tokens);
-		log('Stack: ', stack);
+		// // TODO: SWITCH BETTER
+		// log.apply(this, arguments);
+		// log('Tokens: ', tokens);
+		// log('Stack: ', stack);
 	}
 
 	try {
 		var inputTokens = _.clone(tokens)
 
 		function string(token) {
+			var f = file(token);
+			
+			if (f) return f.toString();
+
 			return token.word.toString();
+		}
+
+		function file(token) {
+			// Probably a duck
+			return token._isFile ? token : null;
 		}
 
 		function number(token) {
@@ -86,22 +95,25 @@ function execute(tokens) {
 
 		function numberOrString(token) {
 			var num = number(token);
-			if (! isNaN(num)) return num;
+			
+			if ( ! isNaN(num)) return num;
 
 			return string(token);
 		}
 
 		function quotation(token) {
 			// Probably a duck
-			return token._isQuotation ? token : undefined;
+			return token._isQuotation ? token : null;
 		}
 
 		function boole(token) {
-			executionLog('Boole: ', token.booleanValue())
+			// Everything is true except
+			// things starting with !
 			return token.booleanValue();
 		}
 
 		function link(token) {
+			// Probably a duck
 			return token._isLink ? token : null;
 		}
 
@@ -218,27 +230,36 @@ function execute(tokens) {
 				':times': function () {
 					var quot = pop(quotation),
 						num = pop(number),
-						dup = ops[':dup'],
-						apply = ops[':call'];
+						call = ops[':call'];
 
 					for (var i = 0; i < num; i++) {
 						push(quot.clone())
-						apply();
+						call();
 					}
 				},
 				':each': function () {
 					var actionQuot = pop(quotation),
 						listQuo = pop(quotation),
 						list = listQuo.words,
-						apply = ops[':call'];
+						call = ops[':call'],
+						quote = ops[':quote'],
+						append = ops[':append'];
+
+					function a (token) { return token.clone() }
 
 					log('List', list)
-					for (var i = 0; i < list.length; i++) {
-						push(list[i].clone());
-						log('CLONED word: ', list[i].clone());
-						push(actionQuot.clone());
-						log('CLONED action: ', actionQuot.clone());
-						apply();
+					// For each word in the list
+					for (var i = list.length - 1; i >= 0; i--) {
+						// Push it on the stack
+						// Make it into a quote
+						// And then push the operator
+						// Then append the val to the op
+						// Then call it all
+						push(a(list[i]));
+						quote();
+						push(a(actionQuot));
+						append();
+						call();
 					}
 				},
 				'[': function () {
@@ -279,7 +300,7 @@ function execute(tokens) {
 
 					if ( ! link || ! format ) throw new Error('wrong args for :get');
 
-					throw new Error('MEOW!!! TIME TO OWN UP TO SOME FUCKING PROMISES MOTHERFUCKER')
+					return Utility.get(format, link.toOptions());
 				},
 				']': function () {
 					// Should have been consumed by ops['[']
@@ -288,7 +309,7 @@ function execute(tokens) {
 				':call': function () {
 					var quotation = pop(quotation);
 
-					if ( ! quotation) throw new Error('Apply called without quotation on top of stack');
+					if ( ! quotation) throw new Error('Call called without quotation on top of stack');
 
 					var words = quotation.words;
 					executionLog('Quotation words: ', words);
@@ -337,21 +358,31 @@ function execute(tokens) {
 					// Values are the simplest token.
 					push(this);
 				},
+				':img': function () {
+					var imgLink = pop(link);
+
+					if ( ! imgLink) throw new Error('Img called with no link!')
+
+					push(TokenFactory.img({ link: imgLink }));
+				},
 				':gif': function () {
-					var word = pop().word,
-						gifHolder = TokenFactory.gif({ 
-							word: word
-						}),
+					var word = pop(string),
 						errorSet = srcSet.bind(null, 'noResults.gif');
 
 					function srcSet(src) {
-						gifHolder.gif = src;
+						gifHolder.link = TokenFactory.linkFromSrc(src);
 					}
 
 					function srcGet(gif) {
 						return gif.src;
 					}
 
+					if ( ! word) throw new Error('Gif called with a bad string argument');
+
+					var gifHolder = TokenFactory.img({ 
+						word: word
+					})
+				
 					push(gifHolder);
 
 					return Giphy.translate(word)
@@ -379,13 +410,12 @@ function execute(tokens) {
 		function executeAll() {
 			var token = next();
 
-			if ( ! token) {
-				// We're done here
-				return;
-			}
+			// Base case, out of tokens!
+			if ( ! token) return;
 
 			// Do it, then do it again
-			return executeToken(token).then(executeAll);
+			return executeToken(token)
+				.then(executeAll);
 		}
 
 		return executeAll().then(function () {

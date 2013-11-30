@@ -1,12 +1,14 @@
 var _ = require('underscore');
+var urlUtil = require('url');
 
 module.exports = {
 	create: create,
 	basic: basic,
 	quotation: quotation,
 	link: link,
+	linkFromSrc: linkFromSrc,
 	f: f,
-	gif: gif
+	img: img
 };
 
 function create(data) {
@@ -138,6 +140,15 @@ function f(msg) {
 	return token;
 }
 
+function linkFromSrc(src) {
+	var sides = src.split(/:\/\//),
+		quot = quotation();
+
+	quot.words.push(sides[1]);
+
+	return link(sides[0], quot);
+}
+
 function link(protocol, urlQuotation) {
 	var data = {
 		word: 'link',
@@ -163,27 +174,39 @@ function link(protocol, urlQuotation) {
 
 			// symptom of BROKE AS F*#$ 'INHERITANCE'
 			return _BasicToken.prototype.toHtml.call(this,template);
+		},
+		toOptions: function () {
+			var href = this.toHref(),
+				url = urlUtil.parse(href);
+
+			return {
+				protocol: this.protocol,
+				host: url.host,
+				path: url.path,
+				port: '80',
+				headers: {'custom': 'Custom Header Demo works'}
+			}
 		}
 	};
 
 	return create(data);
 }
 
-function gif(data) {
+function img(data) {
 	var data = _.extend({
-			word: 'link',
-			gif: 'loading.gif',
+			word: 'gif',
+			link: link('http', quotation({words: ['loading.gif']})),
 			_isGif: true,
 			_isLink: true,
 			description: 'A dancing image! From the future!',
 			// TODO: PROTOTYPAL INHERITANCE PLZKTHXBAI
 			toString: function () {
 				// This is why I want atomic URLs!
-				return this.gif + ' :gif';
+				return this.link.toString() + ' :img';
 			},
 			toHtml: function () {
 				var template = '<a class="linkToken" href="/exec/<%= encodeURIComponent(toString()) %>"><%= toString() %></a>' +
-								'<img class="gif" src="<%= gif %>" />';
+								'<img class="gif" src="<%= link.toHref() %>" />';
 
 				// symptom of BROKE AS F*#$ 'INHERITANCE'
 				return _BasicToken.prototype.toHtml.call(this,template);

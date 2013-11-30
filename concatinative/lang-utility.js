@@ -1,5 +1,6 @@
 var _ = require('underscore');
 var sys = require('sys');
+var Q = require('q');
 
 module.exports = {
 	log: log,
@@ -29,7 +30,24 @@ module.exports = {
 			return Math.random();
 		}
 	},
-	makeExecutableUrl: makeExecutableUrl
+	makeExecutableUrl: makeExecutableUrl,
+	get: function (format, options) {
+
+		var getter;
+
+		switch (options.protocol || 'https') {
+			case 'http': 
+				getter = http;
+				break;
+			case 'https':
+				getter = https;
+				break;
+		}
+
+		// TODO: output different kinds of stuff
+		// switching on format
+		return getRequest(options, getter)
+	}
 };
 
 function makeExecutableUrl(req, path) {
@@ -41,4 +59,48 @@ function log() {
 	_.each(arguments, function (arg) {
 		console.log(sys.inspect(arg));
 	});
+}
+
+function queryString(data) {
+	return _.map(data, function(val, key) {
+		return key + '=' + val;
+	}).join('&');
+}
+
+function getRequest(options, getter) {
+	var deferred = Q.defer();
+ 	var options = _.extend({
+		host: 'concatinative.herokuapp.com',
+		path: '/exec/',
+		port: '80',
+		headers: {'custom': 'Custom Header Demo works'}
+	}, options);
+
+	if (options.queryData) {
+		options.path = options.path + '?' +
+						queryString(options.queryData);
+	}
+
+ 	if ( ! (options.host &&
+ 		 options.port && 
+ 		 options.path)) {
+ 		throw new Error('Insufficient info for http request!')
+ 	}
+
+	function callback(response) {
+		var str = ''
+		response.on('data', function (chunk) {
+			str += chunk;
+		});
+
+		response.on('end', function () {
+			console.log(str);
+			deferred.resolve(str);
+		});
+	}
+
+	var req = getter.request(options, callback);
+	req.end();
+
+	return deferred.promise;
 }

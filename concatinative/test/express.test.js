@@ -74,9 +74,9 @@ describe('executor', function(){
       '1 [ 5 ] :times': '5',
       '2 [ 5 ] :times': '5 5',
       
-      // // Each
-      // '[ hi hello ] [ ] :each': 'hi hello',
-      // '[ hi hello ] [ :dup ] :each': 'hi hi hello hello',
+      // Each
+      '[ hi hello ] [ ] :each': 'hi hello',
+      '[ hi hello ] [ :dup ] :each': 'hi hi hello hello',
 
       // Properties
       //   set
@@ -90,13 +90,17 @@ describe('executor', function(){
 
       // Random - the deterministic parts
       '1 :random': '0',
-      '[ a ] :random': 'a'
-      
+      '[ a ] :random': 'a',
+
             // Links
         // Creation
-      // '[ www.google.com ] http :link': '[ www.google.com ] http :link',
-      //   // :get
+      '[ www.google.com ] http :link': '[ www.google.com ] http :link',
+      //   // :get WIP
       // '[ en.wikipedia.org/w/api.php?format=json&action=query&titles=Adolf_Hitler&prop=revisions&rvprop=content ] http :link json :get query>> normalized>> 0>> from>>': 'Adolf_Hitler',
+
+      // File WIP
+      // 'hello :file': 'hello :file',
+      // 'hello :file world :file :append': 'helloworld :file',
     }, push);
 
     Q.all(promises).then(function () {
