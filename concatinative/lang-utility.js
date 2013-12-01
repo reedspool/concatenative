@@ -1,6 +1,8 @@
 var _ = require('underscore');
 var sys = require('sys');
 var Q = require('q');
+var http = require('http');
+var https = require('https');
 
 module.exports = {
 	log: log,
@@ -31,23 +33,7 @@ module.exports = {
 		}
 	},
 	makeExecutableUrl: makeExecutableUrl,
-	get: function (format, options) {
-
-		var getter;
-
-		switch (options.protocol || 'https') {
-			case 'http': 
-				getter = http;
-				break;
-			case 'https':
-				getter = https;
-				break;
-		}
-
-		// TODO: output different kinds of stuff
-		// switching on format
-		return getRequest(options, getter)
-	}
+	get: get
 };
 
 function makeExecutableUrl(req, path) {
@@ -67,40 +53,58 @@ function queryString(data) {
 	}).join('&');
 }
 
-function getRequest(options, getter) {
+function get(options) {
 	var deferred = Q.defer();
- 	var options = _.extend({
-		host: 'concatinative.herokuapp.com',
-		path: '/exec/',
-		port: '80',
-		headers: {'custom': 'Custom Header Demo works'}
-	}, options);
 
-	if (options.queryData) {
-		options.path = options.path + '?' +
-						queryString(options.queryData);
+	try {
+		var options = _.extend({
+				hostname: 'concatinative.herokuapp.com',
+				path: '/exec/',
+				port: '80',
+				headers: {'custom': 'Custom Header Demo works'}
+			}, options),
+			getter = http;
+
+		switch (options.PROTOCOL) {
+			case 'http': 
+				log('Using http')
+				getter = http;
+				break;
+			case 'https':
+				log('Using https')
+				options.port = 443;
+				getter = https;
+				break;
+		}
+
+		if (options.queryData) {
+			options.path = options.path + '?' +
+							queryString(options.queryData);
+		}
+
+	 	if ( ! (options.hostname &&
+	 		 options.port && 
+	 		 options.path)) {
+	 		throw new Error('Insufficient info for http request!')
+	 	}
+
+		function callback(response) {
+			var str = ''
+			response.on('data', function (chunk) {
+				str += chunk;
+			});
+
+			response.on('end', function () {
+				deferred.resolve(str);
+			});
+		}
+
+		log('REQUESTING:', options);
+		var req = getter.request(options, callback);
+		req.end();
+	} catch (e) {
+		deferred.reject(e)
 	}
-
- 	if ( ! (options.host &&
- 		 options.port && 
- 		 options.path)) {
- 		throw new Error('Insufficient info for http request!')
- 	}
-
-	function callback(response) {
-		var str = ''
-		response.on('data', function (chunk) {
-			str += chunk;
-		});
-
-		response.on('end', function () {
-			console.log(str);
-			deferred.resolve(str);
-		});
-	}
-
-	var req = getter.request(options, callback);
-	req.end();
 
 	return deferred.promise;
 }

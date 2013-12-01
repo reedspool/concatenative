@@ -79,14 +79,14 @@ function execute(tokens) {
 		function string(token) {
 			var f = file(token);
 			
-			if (f) return f.toString();
+			if (f) return f.contents.toString();
 
 			return token.word.toString();
 		}
 
 		function file(token) {
 			// Probably a duck
-			return token._isFile ? token : null;
+			return token._isFile ? token.contents : null;
 		}
 
 		function number(token) {
@@ -167,6 +167,10 @@ function execute(tokens) {
 				}
 			},
 			ops = {
+				value: function () {
+					// Values are the simplest token.
+					push(this);
+				},
 				'+': math.two('sum', numberOrString),
 				'-': math.two('difference', number),
 				'*': math.two('product', number),
@@ -284,9 +288,13 @@ function execute(tokens) {
 						quo.words.push(n);
 					}
 
-					if (typeof n == 'undefined') throw new Error('Unmatched [')
+					if (typeof n == 'undefined') throw new Error('Unmatched "["')
 
 					push(quo);
+				},
+				']': function () {
+					// Should have been consumed by ops['[']
+					throw new Error('Unmatched End Quote ]')
 				},
 				':link': function () {
 					var protocol = pop(string),
@@ -295,16 +303,16 @@ function execute(tokens) {
 					push(TokenFactory.link(protocol, hrefQuotation))
 				},
 				':get': function () {
-					var format = pop(string),
-						link = pop(link);
+					var link = pop(link);
 
-					if ( ! link || ! format ) throw new Error('wrong args for :get');
+					if ( ! link ) throw new Error(':get takes valid :link as argument');
 
-					return Utility.get(format, link.toOptions());
-				},
-				']': function () {
-					// Should have been consumed by ops['[']
-					throw new Error('Unmatched End Quote ]')
+					return Utility.get(link.toOptions())
+							.then(function (data) {
+								push(TokenFactory.file({
+									contents: data
+								}));
+							});
 				},
 				':call': function () {
 					var quotation = pop(quotation);
@@ -354,10 +362,6 @@ function execute(tokens) {
 					
 					push(object);
 				},
-				value: function () {
-					// Values are the simplest token.
-					push(this);
-				},
 				':img': function () {
 					var imgLink = pop(link);
 
@@ -388,6 +392,66 @@ function execute(tokens) {
 					return Giphy.translate(word)
 						.then(srcGet)
 						.then(srcSet, errorSet)
+				},
+				':file': function () {
+					var stuff = pop(string);
+
+					push(TokenFactory.file({
+						contents: decodeURIComponent(stuff)
+					}));
+				},
+				':json': function () {
+					var contents = pop(file),
+						// JSON.parse() throws if contents is
+						// malformed JSON
+						parsedContents = JSON.parse(contents),
+						transform = function (parsed) {
+							if (parsed == null) return null;
+
+							switch (typeof parsed) {
+								case 'undefined':
+									throw new Error('Not sure how we got here: tried to transform JSON "undefined"')
+
+								case 'number':
+									return TokenFactory.basic(parsed);
+
+								case 'boolean':
+									return parsed ? 
+											TokenFactory.basic('JSONTrue') : 
+											TokenFactory.f('JSONFalse')
+
+								case 'string':
+									return TokenFactory.basic(parsed);
+
+								case 'object':
+									if (_.isArray(parsed)) {
+										var quot = TokenFactory.quotation()
+
+										_.each(parsed, function (val) {
+											quot.words.push(transform(val));
+										});
+
+										return quot
+									} else {
+										var basic = TokenFactory.basic('JSONObject')
+										
+										_.each(parsed, function (val, key) {
+											basic.properties[key] = transform(val);
+										});
+
+										return basic;
+									}			
+								}
+
+							throw new Error('Unidentified thing while transforming JSON: ' + parsed);
+						};
+
+					// TODO
+					// Parse the contents into a 
+					// single consistent object 
+					// with properties nesting blkabhalhwefl 
+					// If
+					push(transform(parsedContents));
 				}
 
 			};

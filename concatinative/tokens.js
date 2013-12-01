@@ -8,7 +8,8 @@ module.exports = {
 	link: link,
 	linkFromSrc: linkFromSrc,
 	f: f,
-	img: img
+	img: img,
+	file: file
 };
 
 function create(data) {
@@ -117,10 +118,11 @@ function quotation(data) {
 		_isQuotation: true,
 		toString: function () {
 			var guts = _.map(this.words, function (token) {
-				return token.toString();
-			});
+					return token.toString();
+				}),
+				center = _.isEmpty(guts) ? '' : guts.join(' ') + ' ';
 
-			return '[ ' + guts.join(' ') + ' ]';
+			return '[ ' + center + ']';
 		}
 	}, data);
 
@@ -180,8 +182,8 @@ function link(protocol, urlQuotation) {
 				url = urlUtil.parse(href);
 
 			return {
-				protocol: this.protocol,
-				host: url.host,
+				PROTOCOL: this.protocol,
+				hostname: url.host,
 				path: url.path,
 				port: '80',
 				headers: {'custom': 'Custom Header Demo works'}
@@ -194,11 +196,10 @@ function link(protocol, urlQuotation) {
 
 function img(data) {
 	var data = _.extend({
-			word: 'gif',
-			link: link('http', quotation({words: ['loading.gif']})),
-			_isGif: true,
-			_isLink: true,
-			description: 'A dancing image! From the future!',
+			word: 'img',
+			link: link('http', quotation({ words: ['loading.gif'] })),
+			_isImg: true,
+			description: 'An image, from elsewhere on the Internet',
 			// TODO: PROTOTYPAL INHERITANCE PLZKTHXBAI
 			toString: function () {
 				// This is why I want atomic URLs!
@@ -207,6 +208,29 @@ function img(data) {
 			toHtml: function () {
 				var template = '<a class="linkToken" href="/exec/<%= encodeURIComponent(toString()) %>"><%= toString() %></a>' +
 								'<img class="gif" src="<%= link.toHref() %>" />';
+
+				// symptom of BROKE AS F*#$ 'INHERITANCE'
+				return _BasicToken.prototype.toHtml.call(this,template);
+			}
+		}, data);
+
+	return create(data);
+}
+
+function file(data) {
+	var data = _.extend({
+			word: 'file',
+			contents: '',
+			_isFile: true,
+			description: 'Any ol\' data',
+			// TODO: PROTOTYPAL INHERITANCE PLZKTHXBAI
+			toString: function () {
+				// This is why I want atomic URLs!
+				return encodeURIComponent(this.contents) + ' :file';
+			},
+			toHtml: function () {
+				var template = '<a class="linkToken" href="/exec/<%= encodeURIComponent(toString()) %>"><%= toString() %></a>' +
+								'<p class="file"><%= contents %></p>';
 
 				// symptom of BROKE AS F*#$ 'INHERITANCE'
 				return _BasicToken.prototype.toHtml.call(this,template);

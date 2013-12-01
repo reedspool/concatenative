@@ -33,6 +33,7 @@ describe('executor', function(){
       '2 2': '2 2',
 
       // Quotations
+      '[ ]': '[ ]',
       '[ 2 ]': '[ 2 ]',
       '[ abcd ]': '[ abcd ]',
       '5 :quote': '[ 5 ]',
@@ -92,28 +93,49 @@ describe('executor', function(){
       '1 :random': '0',
       '[ a ] :random': 'a',
 
-            // Links
+      // Links
         // Creation
       '[ www.google.com ] http :link': '[ www.google.com ] http :link',
-      //   // :get WIP
-      // '[ en.wikipedia.org/w/api.php?format=json&action=query&titles=Adolf_Hitler&prop=revisions&rvprop=content ] http :link json :get query>> normalized>> 0>> from>>': 'Adolf_Hitler',
+        
+      // :get HTTP
+      '[ en.wikipedia.org/w/api.php?format=json&action=query&titles=Adolf_Hitler&prop=revisions&rvprop=content ] http :link :get :json query>> normalized>> :call from>>': 'Adolf_Hitler',
 
-      // File WIP
-      // 'hello :file': 'hello :file',
-      // 'hello :file world :file :append': 'helloworld :file',
+      // File
+      'hello :file': 'hello :file',
+
+      // :toJSON WIP
+        // Basics
+      'true :file :json': 'JSONTrue',
+      'false :file :json': '!JSONFalse',
+      '"abcd" :file :json': 'abcd',      
+      
+        // Objects
+      '{"a":"b"} :file :json': 'JSONObject',
+      '{"a":"b"} :file :json a>>': 'b',
+        
+        // Arrays
+      '%5B%5D :file :json': '[ ]',
+      '%5B"abcd"%5D :file :json': '[ abcd ]',
+
+        // Composition
+      '{"a":["bcd"]} :file :json': 'JSONObject',
+      '{"a":["bcd"]} :file :json a>>': '[ bcd ]',
+      '{"a":["steve",":quote"]} :file :json a>> :call': '[ steve ]'
     }, push);
 
-    Q.all(promises).then(function () {
-      done()
-    }, function (error) {
-      console.error('Error')
-      console.error(error);
-      return error;
-    }).done();
+    Q.all(promises).then(done,
+      function (error) {
+        console.error('Error')
+        console.error(error);
+        return error;
+      }).done();
   });
 
   it('non-deterministic', function (done) {
-    // TODO: Test :random
+    // TODO: Test 
+      // :random
+      // :get
+      // :gif (not important)
     done()
   });
 

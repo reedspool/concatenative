@@ -21,9 +21,17 @@ module.exports = (function(Q, http, _) {
  		var fullUrl = api.url + (settings.endpoint || api.defaultSearchEndpoint);
  		var data = { s: settings.query, api_key: api.key };
  		var deferred = Q.defer();
-	 	var options = {
-			host: api.url,
-			path: api.defaultSearchEndpoint + '?' + queryString(data),
+	 // WORKING	var options = {
+		// 	host: api.url,
+		// 	path: api.defaultSearchEndpoint + '?' + queryString(data),
+		// 	port: '80',
+		// 	headers: {'custom': 'Custom Header Demo works'}
+		// };
+
+		// PLAYING
+		var options = {
+			host: 'media.giphy.com',
+			path: '/media/q3N54nbieG65y/200w.gif',
 			port: '80',
 			headers: {'custom': 'Custom Header Demo works'}
 		};
@@ -35,11 +43,11 @@ module.exports = (function(Q, http, _) {
 			});
 
 			response.on('end', function () {
-				console.log(str);
 				deferred.resolve(JSON.parse(str));
 			});
 		}
 
+		console.log("Requesting with Options:", options);
 		var req = http.request(options, callback);
 		req.end();
 
