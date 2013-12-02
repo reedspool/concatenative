@@ -18,8 +18,22 @@ app.set('views', __dirname + '/views');
 app.set('view engine', 'jade');
 app.use(express.favicon());
 app.use(express.logger('dev'));
-app.use(express.bodyParser());
-app.use(express.methodOverride());
+// Before we were thinking about parsing the body immediately,
+// app.use(express.bodyParser());
+// app.use(express.methodOverride());
+// But now we want it "raw"; parsing comes later
+app.use(function(req, res, next) {
+    var data='';
+    req.setEncoding('utf8');
+    req.on('data', function(chunk) { 
+       data += chunk;
+    });
+
+    req.on('end', function() {
+        req.body = data;
+        next();
+    });
+});
 app.use(express.cookieParser('your secret here'));
 app.use(express.session());
 app.use(app.router);
@@ -32,7 +46,9 @@ if ('development' == app.get('env')) {
 }
 
 app.get('/exec/*', concatinative.exec);
+app.post('/exec/*', concatinative.exec);
 app.get('/json/*', concatinative.json);
+app.post('/json/*', concatinative.json);
 
 app.get('/', routes.index);
 // app.get('/syntax/*', routes.syntax);

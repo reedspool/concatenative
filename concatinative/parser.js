@@ -9,7 +9,9 @@ module.exports = {
 };
 
 // Make tokens out of path
-function parse(path, execDirection) {
+function parse(path, initialFile, execDirection) {
+	var deferred = Q.defer();
+
 	try {
 		function invalidWord(word) {
 			// Word invalid if
@@ -31,7 +33,7 @@ function parse(path, execDirection) {
 				wordOrSeparator: /([ \/])|([^ \/]*)/,
 				allWordsAndSeps: /([ \/])|([^ \/]*)*/g
 			},
-			tokenData = [],
+			tokens = [],
 			words = path.match(regex.allWordsAndSeps);
 
 		// Base case
@@ -56,9 +58,18 @@ function parse(path, execDirection) {
 			if (invalidWord(d.word)) {
 				// Do nothing
 			} else {
-				tokenData.push(d);
+				tokens.push(tokenFactory.create(d));
 			}
 		}
+
+		// WIP
+		if (initialFile) {
+			tokens.unshift(tokenFactory.file({
+				contents: initialFile
+			}))
+		}
+
+		deferred.resolve(tokens)
 	} catch (e) {
 		log('PARSER REJECTING', e);
 		return Q.reject({
@@ -71,5 +82,5 @@ function parse(path, execDirection) {
 	}
 
 	// Then give'm a buncha proper tokens!
-	return Q.resolve(_.map(tokenData, tokenFactory.create.bind(tokenFactory)));
+	return deferred.promise;
 }

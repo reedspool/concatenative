@@ -36,21 +36,21 @@ module.exports = {
 	execute: execute
 };
 
-function resolve(urlPath, execDirection) {
+function resolve(urlPath, requestBody, execDirection) {
 	execDirection = execDirection || DEFAULT_EXEC_DIRECTION;
 
-	return Parser.parse(urlPath, execDirection)
+	return Parser.parse(urlPath, requestBody, execDirection)
 		.then(execute);
 }
 
-function executeFromUrlPath(path) {
+function executeFromUrlPath(path, requestBody) {
 	path = path.match(/^[\/]{0,1}(exec|json|html)\/(.*)/);
-
+ 
 	if ( ! path ) throw new Error('Exec hit with no path')
 
 	var input = decodeURIComponent(path[2]);
 
-	return resolve(input, 'ltr')
+	return resolve(input, requestBody, 'ltr')
 		.then(function (result) {
 			log('Exec result: ', result.output);
 			result.input = input;

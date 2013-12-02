@@ -9,7 +9,6 @@ var _ = require('underscore');
 var Q = require('q');
 
 exports.exec = responder(makeInterpreterRenderer)
-
 exports.json = responder(makeJsonRenderer)
 
 function responder(makeRenderer) {
@@ -39,7 +38,7 @@ function makeJsonRenderer(res) {
 function execute (req) {
 	log('Req url:', req.url);
 
-	return concat.executeFromUrlPath(req.url)
+	return concat.executeFromUrlPath(req.url, req.body)
 		.then(function (data) {
 			log('Writing data', data)
 			return _.extend(data, {

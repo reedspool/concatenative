@@ -123,7 +123,10 @@ describe('executor', function(){
       '{"a":["steve",":quote"]} :file :json a>> :call': '[ steve ]'
     }, push);
 
-    Q.all(promises).then(done,
+    Q.all(promises).then(
+      function () {
+        done()
+      },
       function (error) {
         console.error('Error')
         console.error(error);
