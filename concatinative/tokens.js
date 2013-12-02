@@ -9,7 +9,10 @@ module.exports = {
 	linkFromSrc: linkFromSrc,
 	f: f,
 	img: img,
-	file: file
+	file: file,
+	form: form,
+	accessor: accessor,
+	mutator: mutator
 };
 
 function create(data) {
@@ -21,8 +24,9 @@ function create(data) {
 		throw new Error('Attempt to create token with no word');
 	}
 	
-	// TODO: verify: token.operator should only be set once
-
+	// Everything, now til the end of 
+	// this function, is just to set
+	// token.operator correctly
 	switch (token.word) {
 		// Math
 		case '+':
@@ -56,10 +60,13 @@ function create(data) {
 	if (doubleAtEnd) {
 		switch(doubleAtEnd[0]) {
 			case '<<':
+				// This line is the same...
+				var withoutDouble =  token.word.slice(0, token.word.indexOf(doubleAtEnd[0]));
+				return mutator(withoutDouble);
 			case '>>':
-				token.word = token.word.slice(0, token.word.indexOf(doubleAtEnd[0]));
-				token.operator = doubleAtEnd[0];
-				return token;
+				// ...as this one
+				var withoutDouble =  token.word.slice(0, token.word.indexOf(doubleAtEnd[0]));
+				return accessor(withoutDouble);
 		}
 	}
 
@@ -225,7 +232,6 @@ function file(data) {
 			description: 'Any ol\' data',
 			// TODO: PROTOTYPAL INHERITANCE PLZKTHXBAI
 			toString: function () {
-				// This is why I want atomic URLs!
 				return encodeURIComponent(this.contents) + ' :file';
 			},
 			toHtml: function () {
@@ -234,6 +240,67 @@ function file(data) {
 
 				// symptom of BROKE AS F*#$ 'INHERITANCE'
 				return _BasicToken.prototype.toHtml.call(this,template);
+			}
+		}, data);
+
+	return create(data);
+}
+
+function form(actionQuotation, inputQuotation) {
+	var data = _.extend({
+			word: 'form',
+			action: actionQuotation,
+			inputs: inputQuotation,
+			_isForm: true,
+			description: 'A simple question, with a not so simple answer',
+			// TODO: PROTOTYPAL INHERITANCE PLZKTHXBAI
+			toString: function () {
+				return actionQuotation.toString() + ' ' +
+						inputQuotation.toString() + ' :form';
+			},
+			toHtml: function () {
+				var template = '<a class="linkToken" href="/exec/<%= encodeURIComponent(toString()) %>"><%= toString() %></a>' +
+								'<form method="post" action="/exec/:formresponse/<%= action.words.join("/") %>">' +
+									'<% _.each(inputs.words, function (word) { %>' +
+										'<input name="<%= word %>" placeholder="<%= word %>" />' +
+									'<% }); %>' +
+									'<input type="submit" value="Run it" />' +
+								'</form>';
+
+				// symptom of BROKE AS F*#$ 'INHERITANCE'
+				return _BasicToken.prototype.toHtml.call(this,template);
+			}
+		}, data);
+
+	return create(data);
+}
+
+function accessor(property) {
+	var data = _.extend({
+			word: 'accessor',
+			operator: '>>',
+			property: property,
+			_isAccessor: true,
+			description: 'I get the value of a property',
+			// TODO: PROTOTYPAL INHERITANCE PLZKTHXBAI
+			toString: function () {
+				return this.property + this.operator;
+			}
+		}, data);
+
+	return create(data);
+}
+
+function mutator(property) {
+	var data = _.extend({
+			word: 'mutator',
+			operator: '<<',
+			property: property,
+			_isMutator: true,
+			description: 'I change a property',
+			// TODO: PROTOTYPAL INHERITANCE PLZKTHXBAI
+			toString: function () {
+				return this.property + this.operator;
 			}
 		}, data);
 

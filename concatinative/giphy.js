@@ -3,7 +3,7 @@ var http = require('http');
 var _ = require('underscore');
 var Q = require('q');
 
-module.exports = (function(Q, http, _) {
+module.exports = (function() {
 	var api = {
 		key: 'dc6zaTOxFJmzC',
 		url: 'api.giphy.com',
@@ -17,30 +17,30 @@ module.exports = (function(Q, http, _) {
 	}
 
 	function apiRequest(settings) {
-		var settings = settings || { query: 'steve' };
- 		var fullUrl = api.url + (settings.endpoint || api.defaultSearchEndpoint);
- 		var data = { s: settings.query, api_key: api.key };
- 		var deferred = Q.defer();
-	 	var options = {
-			host: api.url,
-			path: api.defaultSearchEndpoint + '?' + queryString(data),
-			port: '80',
-			headers: {'custom': 'Custom Header Demo works'}
-		};
+		var settings = settings || { query: 'steve' },
+			fullUrl = api.url + (settings.endpoint || api.defaultSearchEndpoint),
+			data = { s: settings.query, api_key: api.key },
+			deferred = Q.defer(),
+			options = {
+				host: api.url,
+				path: api.defaultSearchEndpoint + '?' + queryString(data),
+				port: '80',
+				headers: {'custom': 'Custom Header Demo works'}
+			},
+			callback = function(response) {
+				var result = '';
 
-		callback = function(response) {
-			var str = ''
-			response.on('data', function (chunk) {
-				str += chunk;
-			});
+				response.on('data', function (chunk) {
+					result += chunk;
+				});
 
-			response.on('end', function () {
-				deferred.resolve(JSON.parse(str));
-			});
-		}
+				response.on('end', function () {
+					deferred.resolve(JSON.parse(result));
+				});
+			},
+			// The actual request
+			req = http.request(options, callback);
 
-		console.log("Requesting with Options:", options);
-		var req = http.request(options, callback);
 		req.end();
 
 		return deferred.promise;
@@ -61,4 +61,4 @@ module.exports = (function(Q, http, _) {
 		 			});
 	 	}
 	};
-})(Q, http, _);
+})();

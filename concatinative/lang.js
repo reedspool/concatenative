@@ -117,6 +117,10 @@ function execute(tokens) {
 			return token._isLink ? token : null;
 		}
 
+		function property(token) {
+			return token.property
+		}
+
 		var stack = [],
 			push = stack.push.bind(stack), 
 			pop = function (valueFunction) {
@@ -346,8 +350,8 @@ function execute(tokens) {
 				},
 				'>>': function () {
 					var object = pop(),
-						property = string(this);
-						value = object.properties[property]
+						name = property(this);
+						value = object.properties[name]
 					
 					push(value || 
 						TokenFactory.f('NoPropertyValue'));
@@ -355,10 +359,10 @@ function execute(tokens) {
 				'<<': function () {
 					var value = pop(),
 						object = pop(),
-						property = string(this);
+						name = property(this);
 
 					// side effect
-					object.properties[property] = value;
+					object.properties[name] = value;
 					
 					push(object);
 				},
@@ -452,6 +456,33 @@ function execute(tokens) {
 					// with properties nesting blkabhalhwefl 
 					// If
 					push(transform(parsedContents));
+				},
+				':formresponse': function () {
+					try {
+						var contents = pop(file),
+							outputs = contents.split('&'),
+							basic = TokenFactory.basic('FormDataObject');
+
+						_.each(outputs, function (o) {
+							var pair = o.split('='),
+								name = pair[0],
+								value = TokenFactory.basic(pair[1]);
+
+							basic.properties[name] = value;
+						});
+
+						push(basic);
+					} catch(e) {
+						executionLog('Error parsing formdata');
+						log('Error: ', e);
+						throw e;
+					}
+				},
+				':form': function () {
+					var inputs = pop(quotation),
+						action = pop(quotation);
+
+					push(TokenFactory.form(action, inputs));
 				}
 
 			};
