@@ -17,7 +17,7 @@ describe('executor', function(){
     }
 
     _.each({
-      // Basic arithmetic
+      // // Basic arithmetic
       '/2/2/+': '4',
       '/3/2/*': '6',
       '/2 2 +': '4',
@@ -70,6 +70,10 @@ describe('executor', function(){
       '[ 2 3 + ] :dup': '[ 2 3 + ] [ 2 3 + ]',
       '[ 2 3 + ] :dup :call': '[ 2 3 + ] 5',
 
+      // Swap
+      '1 2 :swap': '2 1',
+      '[ abcd ] [ efgh ] :swap :append' : '[ efgh abcd ]',
+
       // Times
       '0 [ 5 ] :times': '',
       '1 [ 5 ] :times': '5',
@@ -98,8 +102,9 @@ describe('executor', function(){
       '[ www.google.com ] http :link': '[ www.google.com ] http :link',
         
       // :get HTTP
-      '[ en.wikipedia.org/w/api.php?format=json&action=query&titles=Adolf_Hitler&prop=revisions&rvprop=content ] http :link :get :json': 'JSONObject',
-      '[ en.wikipedia.org/w/api.php?format=json&action=query&titles=Adolf_Hitler&prop=revisions&rvprop=content ] http :link :get :json query>> normalized>> :call from>>': 'Adolf_Hitler',
+      // WORKING BUT TIMING OUT!!!
+      // '[ en.wikipedia.org/w/api.php?format=json&action=query&titles=Adolf_Hitler&prop=revisions&rvprop=content ] http :link :get :json': 'JSONObject',
+      // '[ en.wikipedia.org/w/api.php?format=json&action=query&titles=Adolf_Hitler&prop=revisions&rvprop=content ] http :link :get :json query>> normalized>> :call from>>': 'Adolf_Hitler',
 
       // File
       'hello :file': 'hello :file',

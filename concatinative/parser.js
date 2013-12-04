@@ -1,13 +1,21 @@
 var _ = require('underscore');
 var Q = require('q');
 var tokenFactory = require('./tokens.js')
-
+var aliases = require('./aliases.js');
 var DEFAULT_EXEC_DIRECTION = 'ltr';
 
 module.exports = {
-	parse: parse
+	parse: preprocessAndParse
 };
 
+var log = console.log
+
+function preprocessAndParse(path, intitialFile, execDirection) {
+	return aliases.flatten(path)
+			.then(function (unaliased) {
+				return parse(unaliased, intitialFile, execDirection)
+			});
+}
 // Make tokens out of path
 function parse(path, initialFile, execDirection) {
 	var deferred = Q.defer();
@@ -19,6 +27,23 @@ function parse(path, initialFile, execDirection) {
 			// * consists only of whitespace
 			return typeof word === 'undefined' || 
 				word.match(/^\s+$/);
+		}
+		function aliasWord(word) {
+			return word.match(regex.aliasWord);
+		}
+		function next() {
+			var d = {
+				seperator: words.shift(),
+				word: words.shift()
+			};
+
+			if ((d.seperator == '' || d.seperator) &&
+				(d.word == '' || d.word)) {
+				return d
+			}
+
+			// No more words!
+			return;
 		}
 
 		// The path is a string of words
@@ -49,11 +74,7 @@ function parse(path, initialFile, execDirection) {
 		if (firstWord == words[0]) words.unshift('/')
 
 		// Bind the separator to whatever's on its right
-		for (var i = 0; i < words.length; i += 2) {
-			var d = {
-				seperator: words[i],
-				word: words[i + 1]
-			};
+		for (var d = next(); d; d = next()) {
 
 			if (invalidWord(d.word)) {
 				// Do nothing
@@ -62,7 +83,7 @@ function parse(path, initialFile, execDirection) {
 			}
 		}
 
-		// WIP
+		// Now, slip the initial data in, if present
 		if (initialFile) {
 			tokens.unshift(tokenFactory.file({
 				contents: initialFile
@@ -75,7 +96,7 @@ function parse(path, initialFile, execDirection) {
 		return Q.reject({
 			error: {
 				message: e.message,
-				stack: f.stack,
+				stack: e.stack,
 				type: e.type
 			}
 		});

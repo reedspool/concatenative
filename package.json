@@ -6,6 +6,7 @@
     "start": "node app.js"
   },
   "dependencies": {
+    "redis-url": "0.1.0",
     "express": "3.3.5",
     "jade": "*",
     "stylus": "*",

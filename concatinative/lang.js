@@ -18,6 +18,7 @@ var expect = require('expect.js');
 
 var TokenFactory = require('./tokens.js');
 var Parser = require('./parser.js');
+var aliases = require('./aliases.js');
 var Utility = require('./lang-utility.js');
 var log = Utility.log;
 
@@ -234,6 +235,13 @@ function execute(tokens) {
 
 					push(arg); 
 					push(clone);
+				},
+				':swap': function () {
+					var a = pop(),
+						b = pop();
+
+					push(a);
+					push(b);
 				},
 				':times': function () {
 					var quot = pop(quotation),
@@ -483,6 +491,14 @@ function execute(tokens) {
 						action = pop(quotation);
 
 					push(TokenFactory.form(action, inputs));
+				},
+				':save': function () {
+					var name = pop(string),
+						stuff = pop();
+
+					aliases.save(name, stuff.toString());
+
+					// Note: nothing pushed!
 				}
 
 			};
