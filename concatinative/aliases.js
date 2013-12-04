@@ -1,4 +1,4 @@
-var redis = require('../redis-denodeified/redis-denodeified.js').connect(process.env.REDISTOGO_URL);
+var redis = require('../redis-denodeified.js').connect(process.env.REDISTOGO_URL);
 var Q = require('Q');
 var prefix = 'concatinative_aliases::'
 
