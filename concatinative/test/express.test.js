@@ -17,7 +17,7 @@ describe('executor', function(){
     }
 
     _.each({
-      // // Basic arithmetic
+      // Basic arithmetic
       '/2/2/+': '4',
       '/3/2/*': '6',
       '/2 2 +': '4',

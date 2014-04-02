@@ -13,10 +13,13 @@ app.set('views', __dirname + '/views');
 app.set('view engine', 'jade');
 app.use(express.favicon());
 app.use(express.logger('dev'));
-// Before was thinking about parsing the body immediately,
+
+// Before was thinking about parsing the body immediately...
+
 // app.use(express.bodyParser());
 // app.use(express.methodOverride());
-// But now I want it "raw"; parsing comes later
+
+// ..but now I want it "raw". parsing comes later
 app.use(function(req, res, next) {
     var data='';
 

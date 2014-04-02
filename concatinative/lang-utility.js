@@ -33,8 +33,17 @@ module.exports = {
 		}
 	},
 	makeExecutableUrl: makeExecutableUrl,
-	get: get
+	get: get,
+	parsePath: parsePath
 };
+
+function parsePath(path) {
+	var parts = path.match(/^[\/]{0,1}(exec|json|html)\/(.*)/);
+ 
+	if ( ! parts ) throw new Error('Executing malformed path: ' + path);
+
+	return parts;
+}
 
 function makeExecutableUrl(req, path) {
 	path = path || req.url;

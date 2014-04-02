@@ -18,6 +18,7 @@ function preprocessAndParse(path, intitialFile, execDirection) {
 }
 // Make tokens out of path
 function parse(path, initialFile, execDirection) {
+	execDirection = execDirection || DEFAULT_EXEC_DIRECTION;
 	var deferred = Q.defer();
 
 	try {

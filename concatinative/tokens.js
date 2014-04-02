@@ -16,7 +16,7 @@ module.exports = {
 };
 
 function create(data) {
-	var token = new _BasicToken();
+	var token = new BasicToken();
 
 	_.extend(token, data);
 
@@ -42,6 +42,8 @@ function create(data) {
 			return token;
 	}
 
+	// The whole word didn't match our expectations,
+	// so maybe the first character will tell us something
 	switch (token.word[0]) {
 		// Anything starting with a ! is the false value
 		case '!':
@@ -54,18 +56,18 @@ function create(data) {
 			return token;
 	}
 
+	// Okay so the first character was uninteresting alone,
+	// what about the last two characters?
+
 	// Setters and getters
 	var doubleAtEnd = token.word.toString().match(/(.{1})\1$/);
 
 	if (doubleAtEnd) {
+		var withoutDouble =  token.word.toString().slice(0, token.word.toString().indexOf(doubleAtEnd[0]));
 		switch(doubleAtEnd[0]) {
 			case '<<':
-				// This line is the same...
-				var withoutDouble =  token.word.slice(0, token.word.indexOf(doubleAtEnd[0]));
 				return mutator(withoutDouble);
 			case '>>':
-				// ...as this one
-				var withoutDouble =  token.word.slice(0, token.word.indexOf(doubleAtEnd[0]));
 				return accessor(withoutDouble);
 		}
 	}
@@ -73,7 +75,7 @@ function create(data) {
 	return token;
 }
 
-function _BasicToken() {
+function BasicToken() {
 	this.operator = 'value';
 	this.seperator = '/';
 	// quacks like a duck;
@@ -82,15 +84,15 @@ function _BasicToken() {
 	this.description = 'Not very exciting. I\'m just me.';
 }
 
-_BasicToken.prototype.toString = function () {
+BasicToken.prototype.toString = function () {
 	return this.word.toString();
 }
 
-_BasicToken.prototype.booleanValue = function () {
+BasicToken.prototype.booleanValue = function () {
 	return ! this._isFalse;
 }
 
-_BasicToken.prototype.clone = function () {
+BasicToken.prototype.clone = function () {
 	var frame = _.clone(this);
 		
 	frame.words = _.map(frame.words, function (word) {
@@ -100,14 +102,14 @@ _BasicToken.prototype.clone = function () {
 	return frame;
 }
 
-_BasicToken.prototype.toHtml = function (template) {
+BasicToken.prototype.toHtml = function (template) {
 	var basicTemplate = '<a class="token" href="/exec/<%= toUriComponent() %>"><%= toString() %></a>';
 	template = template || basicTemplate;
 	var maker = _.template(template);
 	return maker(this);
 }
 
-_BasicToken.prototype.toUriComponent = function () {
+BasicToken.prototype.toUriComponent = function () {
 	return encodeURIComponent(this.toString());
 }
 
@@ -182,7 +184,7 @@ function link(protocol, urlQuotation) {
 							'<span> Follow it! </span><a class="link" href="<%= toHref() %>"><%= toHref() %></a>';
 
 			// symptom of BROKE AS F*#$ 'INHERITANCE'
-			return _BasicToken.prototype.toHtml.call(this,template);
+			return BasicToken.prototype.toHtml.call(this,template);
 		},
 		toOptions: function () {
 			var href = this.toHref(),
@@ -217,7 +219,7 @@ function img(data) {
 								'<img class="gif" src="<%= link.toHref() %>" />';
 
 				// symptom of BROKE AS F*#$ 'INHERITANCE'
-				return _BasicToken.prototype.toHtml.call(this,template);
+				return BasicToken.prototype.toHtml.call(this,template);
 			}
 		}, data);
 
@@ -239,7 +241,7 @@ function file(data) {
 								'<p class="file"><%= contents %></p>';
 
 				// symptom of BROKE AS F*#$ 'INHERITANCE'
-				return _BasicToken.prototype.toHtml.call(this,template);
+				return BasicToken.prototype.toHtml.call(this,template);
 			}
 		}, data);
 
@@ -268,7 +270,7 @@ function form(actionQuotation, inputQuotation) {
 								'</form>';
 
 				// symptom of BROKE AS F*#$ 'INHERITANCE'
-				return _BasicToken.prototype.toHtml.call(this,template);
+				return BasicToken.prototype.toHtml.call(this,template);
 			}
 		}, data);
 
