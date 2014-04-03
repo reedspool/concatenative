@@ -14,13 +14,9 @@ module.exports = {
 
 function preprocessAndParse(path, initialFile, direction) {
 	return Aliases.flatten(path)
-			.then(function (flattened) {
-				return qParse(flattened, initialFile, direction);
-			});
-}
-
-function qParse(path, initialFile, direction) {
-	return Q.fapply(parse, arguments)
+		.then(function (flattened) {
+			return parse(flattened, initialFile, direction);
+		})
 		.fail(function (e) {
 			log('PARSER REJECTING', e);
 			return {

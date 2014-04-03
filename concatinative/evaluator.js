@@ -180,7 +180,6 @@ function execute(tokens) {
 
 					function a (token) { return token.clone() }
 
-					log('List', list)
 					// For each word in the list
 					for (var i = list.length - 1; i >= 0; i--) {
 						// Push it on the stack
@@ -439,7 +438,7 @@ function execute(tokens) {
 			var token = next();
 
 			// Base case, out of tokens!
-			if ( ! token) return;
+			if ( ! token) return Q(null);
 
 			// Do it, then do it again
 			return executeToken(token)

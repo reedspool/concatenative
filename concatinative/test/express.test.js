@@ -18,14 +18,14 @@ describe('executor', function(){
 
     _.each({
       // Basic arithmetic
-      '/2/2/+': '4',
-      '/3/2/*': '6',
-      '/2 2 +': '4',
+      '2 2 +': '4',
+      '3 2 *': '6',
+      '2 2 +': '4',
       // javascript-like + operator
-      '/bob/sue/+': 'suebob', 
+      'bob sue +': 'suebob', 
       
       // Composition
-      '/3/3/2/*/+': '9',
+      '3 3 2 * +': '9',
 
       // Base case empty string input
       '': '',
@@ -87,10 +87,10 @@ describe('executor', function(){
       //   set
       'a 5 b<<': 'a',
 
-      // //   get
+      //   get
       'a 5 b<< b>>': '5',
 
-      // //   no crossover
+      //   no crossover
       'a 5 b<< b>> a b>>': '5 !NoPropertyValue',
 
       // Random - the deterministic parts
