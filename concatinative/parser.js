@@ -1,20 +1,24 @@
-var _ = require('underscore');
-var Q = require('q');
-var tokenFactory = require('./tokens.js')
-var aliases = require('./aliases.js');
-var DEFAULT_EXEC_DIRECTION = 'ltr';
+var _ = require('underscore'),
+	Q = require('q'),
+	tokenFactory = require('./tokens.js'),
+	aliases = require('./aliases.js'),
+	DEFAULT_EXEC_DIRECTION = 'ltr',
+	log = console.log;
 
 module.exports = {
 	parse: preprocessAndParse
 };
 
-var log = console.log
-
 function preprocessAndParse(path, intitialFile, execDirection) {
+	var args = [].slice.apply(arguments),
+		withFirst = function (first) {
+			args[0] = first;
+			return args
+		};
+
 	return aliases.flatten(path)
-			.then(function (unaliased) {
-				return parse(unaliased, intitialFile, execDirection)
-			});
+			.then(withFirst)
+			.spread(parse);
 }
 // Make tokens out of path
 function parse(path, initialFile, execDirection) {

@@ -5,7 +5,7 @@ module.exports = {
 
 function rendererBuilder(a,r,g,s) {
 	var args = [].slice.apply(arguments);
-	
+
 	return function (res) {
 		return rendererFor.apply(null, [res].concat(args));
 	}
@@ -36,6 +36,6 @@ function makeJsonRenderer(res) {
 
 function writeJson(res, data) {
 	res.writeHead(200, {'Content-Type': 'application/json'});
-	res.write(JSON.stringify(data));
+	res.write(JSON.stringify(data, null, 4));
 	res.end();
 }
