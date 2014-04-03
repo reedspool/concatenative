@@ -32,6 +32,10 @@ module.exports = {
 			return Math.random();
 		}
 	},
+	regex: {
+		whitespace:        /\s+/,
+		noWhitespace:      /[^\s]/
+	},
 	makeExecutableUrl: makeExecutableUrl,
 	get: get,
 	parsePathForExecuteable: parsePath

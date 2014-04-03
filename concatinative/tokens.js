@@ -16,13 +16,20 @@ module.exports = {
 };
 
 function create(data) {
+	if (typeof data == 'string') {
+		data = {
+			word: data
+		}
+	}
+
+	if (typeof data.word == 'undefined') {
+		throw new Error('Attempt to create token with no word');
+	}
+
 	var token = new BasicToken();
 
 	_.extend(token, data);
 
-	if (typeof token.word == 'undefined') {
-		throw new Error('Attempt to create token with no word');
-	}
 	
 	// Everything, now til the end of 
 	// this function, is just to set
