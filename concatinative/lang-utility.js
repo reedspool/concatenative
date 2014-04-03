@@ -34,7 +34,7 @@ module.exports = {
 	},
 	makeExecutableUrl: makeExecutableUrl,
 	get: get,
-	parsePath: parsePath
+	parsePathForExecuteable: parsePath
 };
 
 function parsePath(path) {
@@ -42,7 +42,8 @@ function parsePath(path) {
  
 	if ( ! parts ) throw new Error('Executing malformed path: ' + path);
 
-	return parts;
+	return parts && parts[2] &&
+		decodeURIComponent(parts[2]);
 }
 
 function makeExecutableUrl(req, path) {
