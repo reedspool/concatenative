@@ -7,6 +7,9 @@ var _ = require('underscore'),
 	Utility = require('./lang-utility.js'),
 	log = Utility.log;
 
+// Don't know if i have to do this everywhere
+Q.longStackSupport = true;
+
 // Test Url
 // http://localhost:3000/forward_slash/changes%20to/right/slash/wefawe$@@!@/w23@!/2/43/@/$//5E/&*()-+%20%5E;a.a,a/'%22double/quote%7Cpipe~%60backtick
 // 
@@ -36,8 +39,10 @@ function register(nameOrMap, op) {
 }
 
 function execute(token, originalStack, tokens) {
+	var defacaded = originalStack.__wholeStack;
+
 	var op = OPS[token.operator],
-		cloneStack = cloneDeepEnough(originalStack),
+		cloneStack = defacaded || cloneDeepEnough(originalStack),
 		facade = {
 			blindPop : cloneStack.pop.bind(cloneStack),
 			pop: function () {
@@ -48,7 +53,12 @@ function execute(token, originalStack, tokens) {
 			push: cloneStack.push.bind(cloneStack),
 			isEmpty: function () {
 				return cloneStack.length <= 0;
-			}
+			},
+			
+			// Allow a recursive use of execute without needing to clone 
+			// over and over again. The top level execute's stack is 
+			// protected as long as this field remains untouched
+			__wholeStack: cloneStack
 		},
 		update = function (trash) {
 			// Remove all the items gently from original

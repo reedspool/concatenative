@@ -122,7 +122,12 @@ _.extend(BasicToken.prototype, {
 
 		return this.toNumber();
 	},
-	toToken: function () { return this; }
+	toToken: function () { return this; },
+	toQuotation: function () {
+		if ( ! this._isQuotation ) throw new Error('Not a quotation')
+
+		return this;
+	}
 });
 
 function basic(word) {

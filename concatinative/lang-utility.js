@@ -48,7 +48,8 @@ module.exports = {
 			if (typeof a == 'undefined') throw new Error('Attempted access on undefined!')
 			return a[b];
 		},
-		max: Math.max
+		max: Math.max,
+		min: Math.min
 	},
 	unary: {
 		minus: function (a) { return -1 * a; },
