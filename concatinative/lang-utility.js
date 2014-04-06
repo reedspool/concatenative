@@ -55,12 +55,17 @@ module.exports = {
 		not: function (a) { return ! a; },
 		randInt: function (n) {
 			return Math.floor(Math.random() * n);
-		}		
+		}
 	},
 	nullary: {
 		random: function() {
 			return Math.random();
 		}
+	},
+	concatenative: {
+		val: function () { return this; },
+		dup: function (a) { return [a, a.clone()]},
+		swap: function (a, b) { return [a, b]; }
 	},
 	regex: {
 		whitespace:        /\s+/,

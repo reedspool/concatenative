@@ -121,7 +121,8 @@ _.extend(BasicToken.prototype, {
 		if (isNaN(num)) return this.toString();
 
 		return this.toNumber();
-	}
+	},
+	toToken: function () { return this; }
 });
 
 function basic(word) {

@@ -59,7 +59,7 @@ function executeTokens(tokens, stack) {
 		if ( ! token) return Q();
 
 		// Do it, then do it again
-		return Modules.execute(token, stack)
+		return Modules.execute(token, stack, tokens)
 			.then(executeLoop);
 	};	
 }

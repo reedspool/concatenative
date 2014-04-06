@@ -32,10 +32,10 @@ describe('executor', function(){
       '5': '5',
       '2 2': '2 2',
 
-      // // Quotations
-      // '[ ]': '[ ]',
-      // '[ 2 ]': '[ 2 ]',
-      // '[ abcd ]': '[ abcd ]',
+      // Quotations
+      '[ ]': '[ ]',
+      '[ 2 ]': '[ 2 ]',
+      '[ abcd ]': '[ abcd ]',
       // '5 :quote': '[ 5 ]',
 
       // // Append quotations together
@@ -71,7 +71,7 @@ describe('executor', function(){
       // '[ 2 3 + ] dup :call': '[ 2 3 + ] 5',
 
       // // Swap
-      // '1 2 :swap': '2 1',
+      '1 2 swap': '2 1',
       // '[ abcd ] [ efgh ] :swap :append' : '[ efgh abcd ]',
 
       // // Times

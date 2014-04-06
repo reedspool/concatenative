@@ -35,13 +35,13 @@ function register(nameOrMap, op) {
 	OPS[nameOrMap] = op;
 }
 
-function execute(token, originalStack) {
+function execute(token, originalStack, tokens) {
 	var op = OPS[token.operator],
 		cloneStack = cloneDeepEnough(originalStack),
 		facade = {
 			blindPop : cloneStack.pop.bind(cloneStack),
 			pop: function () {
-				if (facade.isEmpty()) throw new Error('Conc - Popped empty stack!')
+				if (facade.isEmpty()) throw new Error('Concatenative - Modules - Popped empty stack!')
 
 				return this.blindPop();
 			},
@@ -63,7 +63,7 @@ function execute(token, originalStack) {
 
 	if ( ! op ) return Q.reject(new Error('No op registered for name ___' + name + '___'));
 
-	return Q.fcall(op, token, facade)
+	return Q.fcall(op, token, facade, tokens)
 		.then(update)
 		.then(Q(originalStack));
 }

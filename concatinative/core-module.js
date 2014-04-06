@@ -4,9 +4,13 @@ var Tokens = require('./tokens.js'),
 	Utility = require('./lang-utility.js'),
 	log = Utility.log,
 	binaryFns = Utility.binary,
+	concatenativeFns = Utility.concatenative,
 
 	twoNumbers = helper('number', 'number'),
 	twoNumbersOrStrings = helper('numberOrString', 'numberOrString'),
+	aToken = helper('token'),
+	nullary = helper(),
+	twoTokens = helper('token', 'token'),
 
 	// Maths
 	// JS-like '+'
@@ -18,15 +22,37 @@ var Tokens = require('./tokens.js'),
 
 	max = twoNumbers(binaryFns.max),
 
-	// Basics
-	value = function (token, stack) { stack.push(token) },
-	dup = function (token, stack) {
-		var a = stack.pop(),
-			copy = a.clone();
+	// Quotations
+	quotation = function (token, stack, tokens) {
+		// We need to read ahead for the words in our quotation...
+		var quo = Tokens.quotation({}),
+			// Need a waaaay better way to do this...
+			myself = arguments.callee;
 
-		stack.push(copy);
-		stack.push(a);
-	};
+		for (var n = tokens.next(); n && n.word !== ']'; n = tokens.next()) {
+
+			// If we found another quotation
+			if (n.word == '[') {
+				// Use myself to push a quotation
+				myself.call(n, stack, tokens);
+				n = stack.pop(quotation);
+			}
+
+			quo.words.push(n);
+		}
+
+		if ( ! n ) throw new Error('Unmatched "["')
+
+		stack.push(quo);
+	},
+	unmatched = nullary(function () { 
+		throw new Error('Unmatched "' + this.word + '"');
+	}),
+
+	// Basics
+	value = nullary(concatenativeFns.val),
+	dup = aToken(concatenativeFns.dup),
+	swap = twoTokens(concatenativeFns.swap);
 
 module.exports = {
 	'+': sum,
@@ -35,6 +61,9 @@ module.exports = {
 	'/': quotient,
 	'%': remainder,
 
+	'[': quotation,
+	']': unmatched,
+
 	sum: sum,
 	difference: difference,
 	product: product,
@@ -42,5 +71,6 @@ module.exports = {
 	remainder: remainder,
 
 	value: value,
-	dup: dup
+	dup: dup,
+	swap: swap
 }
