@@ -6,6 +6,36 @@ var https = require('https');
 
 module.exports = {
 	log: log,
+	fn: {
+		// Useage: .then(Utility.fn.wrap('outputTokens'))
+		wrap: function (name) {
+			var wrapper = {};
+
+			return function (thing) {
+				wrapper[name] = thing;
+
+				return wrapper;
+			}
+		},
+		attachMembers: function (map) {
+			var fnMap = function () { return map; }
+
+			// First, coerce to function
+			if (typeof map == 'function') {
+				fnMap = map;
+			}
+
+			return function(thing) {
+				var map = fnMap();
+
+				_.each(map, function (value, index) {
+					this[index] = value;
+				}, thing)
+
+				return thing;
+			}
+		}
+	},
 	binary: {
 		sum: function (a, b) { return a + b; },
 		difference: function (a, b) { return a - b; },

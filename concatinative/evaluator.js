@@ -1,19 +1,14 @@
 /* 
  * Actually execute our little language
  */
-var _ = require('underscore');
-var sys = require('sys');
-var Giphy = require('./giphy.js');
-var Q = require('q');
-var expect = require('expect.js');
-
-var TokenFactory = require('./tokens.js');
-var Parser = require('./parser.js');
-var aliases = require('./aliases.js');
-var Utility = require('./lang-utility.js');
-var log = Utility.log;
-
-var DEFAULT_EXEC_DIRECTION = 'ltr';
+var _ = require('underscore'),
+	sys = require('sys'),
+	Giphy = require('./giphy.js'),
+	Q = require('q'),
+	TokenFactory = require('./tokens.js'),
+	Aliases = require('./aliases.js'),
+	Utility = require('./lang-utility.js'),
+	log = Utility.log;
 
 // Test Url
 // http://localhost:3000/forward_slash/changes%20to/right/slash/wefawe$@@!@/w23@!/2/43/@/$//5E/&*()-+%20%5E;a.a,a/'%22double/quote%7Cpipe~%60backtick
@@ -31,67 +26,43 @@ module.exports = {
 function execute(tokens) {
 	function executionLog() {
 		// // TODO: SWITCH BETTER
-		// log.apply(this, arguments);
-		// log('Tokens: ', tokens);
-		// log('Stack: ', stack);
+		log.apply(this, arguments);
+		log('Tokens: ', tokens);
+		log('Stack: ', stack);
 	}
 
 	try {
-		var inputTokens = _.clone(tokens)
+		var inputTokens = _.clone(tokens),
+			stack = [];
+			// .shift() executes left to right -->
+			// .pop()   executes right to left <--
+			next = tokens.shift.bind(tokens),
+			rewind = tokens.unshift.bind(tokens),
 
-		var stack = [],
-			push = stack.push.bind(stack), 
-			pop = function (valueFunction) {
-				executionLog('Pop w/ func ' + valueFunction);
-				valueFunction = valueFunction || 
-					function (t) { return t; };
-
-				if (_.isEmpty(stack) || ! _.last(stack)) {
-					throw new Error('Popping Empty Stack!');
-				}
-				
-				var val = valueFunction(stack.pop());
-				executionLog('value post func: ', val)
-
-				if (typeof val === 'undefined') {
-					throw new Error('Value on stack incorrect type');
-				}
-
-				return val;
-			},
-			next = function () {
-				executionLog('About to next');
-
-				// .pop() <== right to left
-				// .shift() ==> left to right
-				return tokens.shift();
-			},
-			rewind = function (input) {
-				executionLog('About to rewind');
-
-				return tokens.unshift(input);
-			},
+			// OPS
 			binaryUtil = Utility.binary,
 			unaryUtil = Utility.unary,
 			nullaryUtil = Utility.nullary,
 			math = {
 				two: function(origOp, what, whatB) {
-					return function () {
+					return function (stack) {
+						log('orig', origOp)
 						op = binaryUtil[origOp];
 						whatB = whatB || what;
 
 						if (! op || ! what) throw new Error('Binary op gone wrong op: ' + op + ' originalOp: ' + origOp + ' what: ' + what)
+						executionLog(what.toString())
+
+						var result = op(stack.pop(what), stack.pop(whatB));
 						
-						var result = op(pop(what), pop(whatB));
-						
-						push(TokenFactory.basic(result));
+						stack.push(TokenFactory.basic(result));
 					}
 				}
 			},
 			ops = {
-				value: function () {
+				value: function (stack) {
 					// Values are the simplest token.
-					push(this);
+					stack.push(this);
 				},
 				'+': math.two('sum', numberOrString),
 				'-': math.two('difference', number),
@@ -99,8 +70,8 @@ function execute(tokens) {
 				'/': math.two('quotient', number),
 				'%': math.two('remainder', number),
 				':max': math.two('max', number),
-				':random': function () {
-					var arg = pop(),
+				':random': function (stack) {
+					var arg = stack.pop(),
 						numArg = number(arg),
 						quotArg = quotation(arg),
 						rand = nullaryUtil.random();
@@ -114,7 +85,7 @@ function execute(tokens) {
 						var result = numArg == 0 ? nullaryUtil.random() : 
 							unaryUtil.randInt(numArg);
 
-						push(TokenFactory.basic(result));
+						stack.push(TokenFactory.basic(result));
 					} else {
 						// It must be a quotation. 
 						// Pick one of the quotation's words
@@ -122,57 +93,55 @@ function execute(tokens) {
 
 						if (_.isEmpty(words)) throw new Error('Cannot select from empty quotation!')
 
-						push(words[unaryUtil.randInt(words.length)]);
+						stack.push(words[unaryUtil.randInt(words.length)]);
 					}
 				},
-				':quote': function () {
+				':quote': function (stack) {
 					// Pop whatever's on the stack
-					var arg = pop(),
-						quotation = TokenFactory.quotation({
-							seperator: this.seperator
-						});
+					var arg = stack.pop(),
+						quotation = TokenFactory.quotation();
 
 					// Wrap it in a quotation
 					quotation.words.push(arg);
 
 					// Push it back
-					push(quotation);
+					stack.push(quotation);
 				},
-				':append': function () {
-					var quotA = pop(quotation),
-						quotB = pop(quotation);
+				':append': function (stack) {
+					var quotA = stack.pop(quotation),
+						quotB = stack.pop(quotation);
 
 					quotA.words = quotB.words.concat(quotA.words);
 
-					push(quotA);
+					stack.push(quotA);
 				},
-				':dup': function () {
-					var arg = pop(),
+				':dup': function (stack) {
+					var arg = stack.pop(),
 						clone = arg.clone();
 
-					push(arg); 
-					push(clone);
+					stack.push(arg); 
+					stack.push(clone);
 				},
-				':swap': function () {
-					var a = pop(),
-						b = pop();
+				':swap': function (stack) {
+					var a = stack.pop(),
+						b = stack.pop();
 
-					push(a);
-					push(b);
+					stack.push(a);
+					stack.push(b);
 				},
-				':times': function () {
-					var quot = pop(quotation),
-						num = pop(number),
+				':times': function (stack) {
+					var quot = stack.pop(quotation),
+						num = stack.pop(number),
 						call = ops[':call'];
 
 					for (var i = 0; i < num; i++) {
-						push(quot.clone())
+						stack.push(quot.clone())
 						call();
 					}
 				},
-				':each': function () {
-					var actionQuot = pop(quotation),
-						listQuo = pop(quotation),
+				':each': function (stack) {
+					var actionQuot = stack.pop(quotation),
+						listQuo = stack.pop(quotation),
 						list = listQuo.words,
 						call = ops[':call'],
 						quote = ops[':quote'],
@@ -187,20 +156,18 @@ function execute(tokens) {
 						// And then push the operator
 						// Then append the val to the op
 						// Then call it all
-						push(a(list[i]));
-						quote();
-						push(a(actionQuot));
-						append();
-						call();
+						stack.push(a(list[i]));
+						quote(stack);
+						stack.push(a(actionQuot));
+						append(stack);
+						call(stack);
 					}
 				},
-				'[': function () {
+				'[': function (stack) {
 					// This is the only function currently which
 					// pulls things from the input stream!
 					executionLog('Quotation begun');
-					var quo = TokenFactory.quotation({
-							seperator: this.seperator
-						}),
+					var quo = TokenFactory.quotation({}),
 						myself = arguments.callee
 
 					for (var n = next(); n && n.word !== ']';
@@ -209,8 +176,8 @@ function execute(tokens) {
 						// If we found another quotation
 						if (n.word == '[') {
 							// Use myself to push a quotation
-							myself.apply(n);
-							n = pop(quotation);
+							myself.call(n, stack);
+							n = stack.pop(quotation);
 						}
 
 						quo.words.push(n);
@@ -218,32 +185,32 @@ function execute(tokens) {
 
 					if (typeof n == 'undefined') throw new Error('Unmatched "["')
 
-					push(quo);
+					stack.push(quo);
 				},
-				']': function () {
+				']': function (stack) {
 					// Should have been consumed by ops['[']
 					throw new Error('Unmatched End Quote ]')
 				},
-				':link': function () {
-					var protocol = pop(string),
-						hrefQuotation = pop(quotation);
+				':link': function (stack) {
+					var protocol = stack.pop(string),
+						hrefQuotation = stack.pop(quotation);
 
-					push(TokenFactory.link(protocol, hrefQuotation))
+					stack.push(TokenFactory.link(protocol, hrefQuotation))
 				},
-				':get': function () {
-					var link = pop(link);
+				':get': function (stack) {
+					var link = stack.pop(link);
 
 					if ( ! link ) throw new Error(':get takes valid :link as argument');
 
 					return Utility.get(link.toOptions())
 							.then(function (data) {
-								push(TokenFactory.file({
+								stack.push(TokenFactory.file({
 									contents: data
 								}));
 							});
 				},
-				':call': function () {
-					var quotation = pop(quotation);
+				':call': function (stack) {
+					var quotation = stack.pop(quotation);
 
 					if ( ! quotation) throw new Error('Call called without quotation on top of stack');
 
@@ -263,42 +230,42 @@ function execute(tokens) {
 
 					// Note: No Push!!
 				},
-				':if': function () {
-					var test = pop(boole),
-						caseTrue = pop(quotation),
-						caseFalse = pop(quotation);
+				':if': function (stack) {
+					var test = stack.pop(boole),
+						caseTrue = stack.pop(quotation),
+						caseFalse = stack.pop(quotation);
 
-					push( test ? caseTrue : caseFalse );
+					stack.push( test ? caseTrue : caseFalse );
 
-					ops[':call']();
+					ops[':call'](stack);
 				},
-				'>>': function () {
-					var object = pop(),
+				'>>': function (stack) {
+					var object = stack.pop(),
 						name = property(this);
 						value = object.properties[name]
 					
-					push(value || 
+					stack.push(value || 
 						TokenFactory.f('NoPropertyValue'));
 				},
-				'<<': function () {
-					var value = pop(),
-						object = pop(),
+				'<<': function (stack) {
+					var value = stack.pop(),
+						object = stack.pop(),
 						name = property(this);
 
 					// side effect
 					object.properties[name] = value;
 					
-					push(object);
+					stack.push(object);
 				},
-				':img': function () {
-					var imgLink = pop(link);
+				':img': function (stack) {
+					var imgLink = stack.pop(link);
 
 					if ( ! imgLink) throw new Error('Img called with no link!')
 
-					push(TokenFactory.img({ link: imgLink }));
+					stack.push(TokenFactory.img({ link: imgLink }));
 				},
-				':gif': function () {
-					var word = pop(string),
+				':gif': function (stack) {
+					var word = stack.pop(string),
 						errorSet = srcSet.bind(null, 'noResults.gif');
 
 					function srcSet(src) {
@@ -315,21 +282,21 @@ function execute(tokens) {
 						word: word
 					})
 				
-					push(gifHolder);
+					stack.push(gifHolder);
 
 					return Giphy.translate(word)
 						.then(srcGet)
 						.then(srcSet, errorSet)
 				},
-				':file': function () {
-					var stuff = pop(string);
+				':file': function (stack) {
+					var stuff = stack.pop(string);
 
-					push(TokenFactory.file({
+					stack.push(TokenFactory.file({
 						contents: decodeURIComponent(stuff)
 					}));
 				},
-				':json': function () {
-					var contents = pop(file),
+				':json': function (stack) {
+					var contents = stack.pop(file),
 						// JSON.parse() throws if contents is
 						// malformed JSON
 						parsedContents = JSON.parse(contents),
@@ -379,11 +346,11 @@ function execute(tokens) {
 					// single consistent object 
 					// with properties nesting blkabhalhwefl 
 					// If
-					push(transform(parsedContents));
+					stack.push(transform(parsedContents));
 				},
-				':formresponse': function () {
+				':formresponse': function (stack) {
 					try {
-						var contents = pop(file),
+						var contents = stack.pop(file),
 							outputs = contents.split('&'),
 							basic = TokenFactory.basic('FormDataObject');
 
@@ -395,50 +362,68 @@ function execute(tokens) {
 							basic.properties[name] = value;
 						});
 
-						push(basic);
+						stack.push(basic);
 					} catch(e) {
 						executionLog('Error parsing formdata');
 						log('Error: ', e);
 						throw e;
 					}
 				},
-				':form': function () {
-					var inputs = pop(quotation),
-						action = pop(quotation);
+				':form': function (stack) {
+					var inputs = stack.pop(quotation),
+						action = stack.pop(quotation);
 
-					push(TokenFactory.form(action, inputs));
+					stack.push(TokenFactory.form(action, inputs));
 				},
-				':save': function () {
-					var name = pop(string),
-						stuff = pop();
+				':save': function (stack) {
+					var name = stack.pop(string),
+						stuff = stack.pop();
 
-					aliases.save(name, stuff.toString());
+					Aliases.save(name, stuff.toString());
 
 					// Note, nothing pushed!
 				}
 
 			};
 
+		stack.push = stack.push.bind(stack), 
+		stack.pop = function (valueFunction) {
+			executionLog('Pop w/ func ' + valueFunction);
+			valueFunction = valueFunction || 
+				function (t) { return t; };
+
+			if (_.isEmpty(this)) {
+				throw new Error('Popping Empty Stack!');
+			} else {
+				executionLog('Not empty')
+			}
+			
+			var val = valueFunction(this.pop());
+			executionLog('value post func: ', val)
+
+			if (typeof val === 'undefined') {
+				throw new Error('Value on stack incorrect type');
+			}
+
+			return val;
+		}.bind(stack)
+
 		function executeToken(token) {
 			var op = ops[token.operator];
 
 			if ( ! op) throw new Error('Unfound operator for word: ' + token.word + ' op:' + token.operator);
-		
-			var deferred = Q.defer(),
-				promise = deferred.promise.then(function () {
-					return op.apply(token)
-				});
 
-			deferred.resolve();
+			return Q.fcall(op.bind(token, stack));
 
-			return promise;
+			// I think this function should just turn into this...
+			//return modules.execute(token, stack);
 		}
 
 		function executeAll() {
 			var token = next();
 
 			// Base case, out of tokens!
-			if ( ! token) return Q(null);
+			if ( ! token) return Q([]);
 
 			// Do it, then do it again
 			return executeToken(token)
@@ -484,15 +469,18 @@ function file(token) {
 }
 
 function number(token) {
+	log('Number:', token.word)
 	return parseFloat(token.word);
 }
 
 function numberOrString(token) {
 	var num = number(token);
 	
-	if ( ! isNaN(num)) return num;
+	log('hi')
 
-	return string(token);
+	if (isNaN(num)) return string(token);
+
+	return num;
 }
 
 function quotation(token) {

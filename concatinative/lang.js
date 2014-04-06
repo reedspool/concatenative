@@ -11,13 +11,26 @@
  *  License: TBD
  */
 var Parser = require('./parser.js'),
-	Evaluator = require('./evaluator.js');
+	Evaluator = require('./newEvaluator.js'),
+	Modules = require('./modules.js'),
+	core = require('./core-module.js');
 
 module.exports = {
-	resolve: resolve
+	resolve: resolve,
+	load: load
 };
+
+initialLoad();
+
+function initialLoad() {
+	load(core);
+}
 
 function resolve(input, body) {
 	return Parser.parse(input, body)
 		.then(Evaluator.execute)
+}
+
+function load(module) {
+	Modules.register(module);
 }

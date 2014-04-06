@@ -1,5 +1,6 @@
-var _ = require('underscore');
-var urlUtil = require('url');
+var _ = require('underscore'),
+	urlUtil = require('url'),
+	Modules = require('./modules.js');
 
 module.exports = {
 	create: create,
@@ -12,8 +13,13 @@ module.exports = {
 	file: file,
 	form: form,
 	accessor: accessor,
-	mutator: mutator
+	mutator: mutator,
+	isToken: isToken
 };
+
+function isToken(t) {
+	return !! t._isToken;
+}
 
 function create(data) {
 	if (typeof data == 'string') {
@@ -22,19 +28,20 @@ function create(data) {
 		}
 	}
 
-	if (typeof data.word == 'undefined') {
-		throw new Error('Attempt to create token with no word');
-	}
-
 	var token = new BasicToken();
 
 	_.extend(token, data);
 
+	var word = token.word;
+
+	if (typeof word == 'undefined') {
+		throw new Error('Attempt to create token with no word');
+	}
 	
 	// Everything, now til the end of 
 	// this function, is just to set
 	// token.operator correctly
-	switch (token.word) {
+	switch (word) {
 		// Math
 		case '+':
 		case '-':
@@ -45,38 +52,21 @@ function create(data) {
 		// Quotations
 		case '[':
 		case ']':
-			token.operator = token.word;
+			token.operator = word;
 			return token;
 	}
 
 	// The whole word didn't match our expectations,
 	// so maybe the first character will tell us something
-	switch (token.word[0]) {
+	switch (word[0]) {
 		// Anything starting with a ! is the false value
 		case '!':
-			return f(token.word.slice(1));
-
-		case ':':
-			// This syntax is for giggles, I don't expect
-			// it to work this way forever
-			token.operator = token.word;
-			return token;
+			return f(word.slice(1));
 	}
 
-	// Okay so the first character was uninteresting alone,
-	// what about the last two characters?
-
-	// Setters and getters
-	var doubleAtEnd = token.word.toString().match(/(.{1})\1$/);
-
-	if (doubleAtEnd) {
-		var withoutDouble =  token.word.toString().slice(0, token.word.toString().indexOf(doubleAtEnd[0]));
-		switch(doubleAtEnd[0]) {
-			case '<<':
-				return mutator(withoutDouble);
-			case '>>':
-				return accessor(withoutDouble);
-		}
+	// Okay maybe it's an op...
+	if (Modules.isRegistered(word)) {
+		token.operator = token.word;
 	}
 
 	return token;
@@ -84,41 +74,55 @@ function create(data) {
 
 function BasicToken() {
 	this.operator = 'value';
-	this.seperator = '/';
 	// quacks like a duck;
 	this._isToken = true;
 	this.properties = {};
 	this.description = 'Not very exciting. I\'m just me.';
 }
 
-BasicToken.prototype.toString = function () {
-	return this.word.toString();
-}
+_.extend(BasicToken.prototype, {
+	toString: function () {
+		return this.word.toString();
+	},
+	booleanValue: function () {
+		return ! this._isFalse;
+	},
+	clone: function () {
+		var frame = _.clone(this);
+			
+		frame.words = _.map(frame.words, function (word) {
+			return word.clone();
+		});
 
-BasicToken.prototype.booleanValue = function () {
-	return ! this._isFalse;
-}
+		return frame;
+	},
+	toHtml: function (template) {
+		var basicTemplate = '<a class="token" href="/exec/<%= toUriComponent() %>"><%= toString() %></a>';
+		template = template || basicTemplate;
+		var maker = _.template(template);
+		return maker(this);
+	},
+	toUriComponent: function () {
+		return encodeURIComponent(this.toString());
+	},
+	toNumber: function () {
+		var word = this.word,
+			num = parseFloat(word, 10),
+			floor = Math.floor(num);
 
-BasicToken.prototype.clone = function () {
-	var frame = _.clone(this);
-		
-	frame.words = _.map(frame.words, function (word) {
-		return word.clone();
-	});
+		if (isNaN(num)) throw new Error('Cannot coerce word to number: ' + word)
 
-	return frame;
-}
+		return num == floor ? floor : num;
+	},
+	toNumberOrString: function () {
+		var word = this.word,
+			num = parseFloat(word, 10);
 
-BasicToken.prototype.toHtml = function (template) {
-	var basicTemplate = '<a class="token" href="/exec/<%= toUriComponent() %>"><%= toString() %></a>';
-	template = template || basicTemplate;
-	var maker = _.template(template);
-	return maker(this);
-}
+		if (isNaN(num)) return this.toString();
 
-BasicToken.prototype.toUriComponent = function () {
-	return encodeURIComponent(this.toString());
-}
+		return this.toNumber();
+	}
+});
 
 function basic(word) {
 	return create({ word: word });
